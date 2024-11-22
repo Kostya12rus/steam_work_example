@@ -10,7 +10,12 @@ def get_steam_profile_info(session: requests.Session = None, url_profile='https:
         req = requests.get(url=f'{url_profile}/?xml=1')
     if not req.ok: return {}
 
-    soup = BeautifulSoup(req.text, 'html.parser')
+    content_type = req.headers.get('Content-Type', '')
+    if 'text/xml' not in content_type:
+        print(f"Некорректный Content-Type: {content_type}")
+        return {}
+
+    soup = BeautifulSoup(req.text, features="xml")
     profile_fatalerror = soup.find('div', class_='profile_fatalerror')
     if profile_fatalerror: return {}
 

@@ -169,6 +169,8 @@ class LoginPage(BasePage):
         self.icon = ft.icons.PERSON_ADD_ALT
         self.selected_icon = ft.icons.PERSON_ADD_ALT_ROUNDED
 
+        self.disabled_is_login = True
+
         self.login_content = Login()
         self.accounts_content = AccountsList()
 

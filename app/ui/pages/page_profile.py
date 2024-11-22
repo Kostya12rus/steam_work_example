@@ -292,7 +292,9 @@ class ProfilePage(BasePage):
         self.label = 'Профиль'
         self.icon = ft.icons.PERSON
         self.selected_icon = ft.icons.PERSON_OUTLINED
+
         self.disabled = True
+        self.disabled_is_logout = True
 
         self.page_content = ProfileContent()
 

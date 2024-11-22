@@ -2,7 +2,8 @@ import flet as ft
 
 from app.callback import callback_manager, EventName
 from app.ui.widgets import ThemeToggleButton, ColorMenuButton
-from app.ui.pages import LoginPage, ProfilePage, TradePage
+# from app.ui.pages import LoginPage, ProfilePage, TradePage
+from app.ui.pages import page_manager
 from app.package.steam_session import note_js_utility, steam_session_manager
 from app.core import Account
 
@@ -20,14 +21,15 @@ class MainPageContent(ft.Row):
         callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_DEVICE, self.on_callback_request_confirmation_device)
         callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_EMAIL, self.on_callback_request_confirmation_email)
 
-        self._login_page = LoginPage()
-        self._profile_page = ProfilePage()
-        self._trade_page = TradePage()
-        self._pages = [
-            self._login_page,
-            self._profile_page,
-            self._trade_page,
-        ]
+        # self._login_page = LoginPage()
+        # self._profile_page = ProfilePage()
+        # self._trade_page = TradePage()
+        # self._pages = [
+        #     self._login_page,
+        #     self._profile_page,
+        #     self._trade_page,
+        # ]
+        self._pages = page_manager.get_pages()
 
         self.expand = True
         self.spacing = 0
@@ -70,7 +72,7 @@ class MainPageContent(ft.Row):
         self.controls = [self.navigation_column, self.vertical_divider, self.content_page]
 
     def on_press_logout(self, *args):
-        steam_session_manager.on_callback_logout()
+        callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_OUT)
 
     def set_snack_bar(self, text: str):
         if self.page:
@@ -80,16 +82,14 @@ class MainPageContent(ft.Row):
             self.page.update()
     def on_callback_logout(self):
         self.set_snack_bar("Logout success")
-        self.on_rail_change(set_page=self._login_page)
-        self._login_page.disabled = False
-        self._profile_page.disabled = True
+        set_page = next((page for page in self._pages if page.not_disabled or not page.disabled_is_logout), None)
+        if set_page: self.on_rail_change(set_page=set_page)
         self.logout_button.visible = False
         self.update()
     def on_callback_authenticated(self, account: Account):
         self.set_snack_bar(f"Success auth {account.account_name}")
-        self.on_rail_change(set_page=self._profile_page)
-        self._login_page.disabled = True
-        self._profile_page.disabled = False
+        set_page = next((page for page in self._pages if page.not_disabled or not page.disabled_is_login), None)
+        if set_page: self.on_rail_change(set_page=set_page)
         self.logout_button.visible = True
         self.update()
     def on_callback_authenticated_error(self, error: str):

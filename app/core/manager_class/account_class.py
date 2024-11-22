@@ -19,11 +19,14 @@ class Account:
             'account_name': self.account_name,
             'password': self.password,
             'steam_id': self.steam_id,
-            'refresh_token': self.refresh_token
+            'refresh_token': self.refresh_token,
+            'session': self.session
         }
     def set_save_data(self, data: dict):
         self.account_name = data.get('account_name', None)
         self.password = data.get('password', None)
         self.steam_id = data.get('steam_id', None)
         self.refresh_token = data.get('refresh_token', None)
+        session = data.get('session', None)
+        if session: self.session = session
         return self

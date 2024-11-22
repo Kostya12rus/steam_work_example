@@ -4,6 +4,7 @@ pycountry
 qrcode[pil]
 cryptography
 
+lxml
 steam
 loguru
 Pillow

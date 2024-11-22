@@ -1,7 +1,6 @@
 import flet as ft
 from app.database import sql_manager
 from app.core import Account
-from app.package.steam_session import steam_session_manager
 from app.callback import callback_manager, EventName
 
 class Title(ft.Row):
@@ -17,11 +16,16 @@ class Title(ft.Row):
 class BasePage(ft.NavigationRailDestination):
     def __init__(self):
         super().__init__()
-        self.name = None
-        self.page_content = None
-        self.account: Account = None
+        self.name: str | None = None
+        self.page_content: ft.Container | None = None
+        self.account: Account | None = None
 
-        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_IN, self.__new_account)
+        self.not_disabled = False
+        self.disabled_is_login = False
+        self.disabled_is_logout = False
+
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_IN, self.__login_account)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_OUT, self.__logout_account)
 
         callback_manager.register(EventName.ON_ACCOUNT_LOGGED_IN, self.on_callback_authenticated)
         callback_manager.register(EventName.ON_ACCOUNT_LOGGED_OUT, self.on_callback_logout)
@@ -40,9 +44,22 @@ class BasePage(ft.NavigationRailDestination):
         ...
     def on_callback_qr_code_timeout(self):
         ...
-    def __new_account(self, account: Account):
+
+    def __logout_account(self):
+        self.account = None
+
+        is_disable = False if self.not_disabled else self.disabled_is_logout
+        if self.disabled != is_disable:
+            self.disabled = is_disable
+            if self.page: self.page.update()
+    def __login_account(self, account: Account):
         self.account = account
         sql_manager.account_save(account)
+
+        is_disable = False if self.not_disabled else self.disabled_is_login
+        if self.disabled != is_disable:
+            self.disabled = is_disable
+            if self.page: self.page.update()
 
     def build(self):
         ...

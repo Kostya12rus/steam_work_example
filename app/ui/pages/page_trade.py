@@ -868,14 +868,11 @@ class TradePage(BasePage):
         self.label = 'Trade'
         self.icon = ft.icons.CURRENCY_EXCHANGE
         self.selected_icon = ft.icons.CURRENCY_EXCHANGE
+
         self.disabled = True
+        self.disabled_is_logout = True
 
         self.page_content = TradePageContent()
 
     def on_callback_authenticated(self, account: Account):
-        self.disabled = False
-        if self.page: self.update()
         self.page_content.update_self_user(account)
-    def on_callback_logout(self):
-        self.disabled = True
-        if self.page: self.update()
