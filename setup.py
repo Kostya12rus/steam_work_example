@@ -13,40 +13,36 @@ def parse_requirements() -> list[str]:
     with open(file_path, encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
-
 setup(
-    name="steam_work_example",                      # Название проекта
-    version="1.0.0",                            # Версия проекта
-    author="Kostya12rus",                       # Автор проекта
-    author_email="your_email@example.com",      # Email автора
-    description="Пример десктопного приложения на Python",  # Краткое описание
-    long_description=parce_readme(),          # Полное описание (например, из README.md)
-    long_description_content_type="text/markdown",  # Тип содержимого (Markdown)
-    url="https://github.com/username/repo",     # Ссылка на репозиторий или сайт проекта
-    packages=find_packages(),                   # Автоматический поиск пакетов
-    include_package_data=True,                  # Включение дополнительных файлов (ресурсов)
+    name="steam_work_example",
+    version="1.0.0",
+    author="Kostya12rus",
+    description="Десктопное приложение на Python для работы в Steam",
+    long_description=parce_readme(),
+    long_description_content_type="text/markdown",
+    url="https://github.com/Kostya12rus/steam_work_example",
+    packages=find_packages(),
+    include_package_data=True,
     package_data={
-        # Указываем, какие файлы включить для конкретных пакетов
         "app.package.steam_session": ["*.js", "*.json"],
         "app.assets": ["*.json", "*.png"],
     },
-    install_requires=parse_requirements(),    # Зависимости
-    entry_points={                              # Точка входа для запуска приложения
+    install_requires=parse_requirements(),
+    entry_points={
         "console_scripts": [
-            "steam_work_example=app.main:main", # Связывает команду с функцией main()
+            "steam_work_example=app.main:main",
         ],
     },
-    classifiers=[                               # Классификация проекта
+    classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.7",                   # Минимальная версия Python
-    license="MIT",                              # Лицензия
-    keywords="desktop application PyQt GUI",    # Ключевые слова
-    project_urls={                              # Дополнительные ссылки
-        "Bug Tracker": "https://github.com/username/repo/issues",
-        "Documentation": "https://github.com/username/repo/wiki",
+    python_requires=">=3.7",
+    license="MIT",
+    keywords="desktop application Steam Flet GUI",
+    project_urls={
+        "Bug Tracker": "https://github.com/Kostya12rus/steam_work_example/issues",
+        "Documentation": "https://github.com/Kostya12rus/steam_work_example/wiki",
     },
 )
-# а при >pip install . --no-cache-dir он устанавливает последнюю версию с гит хаба или нет?
