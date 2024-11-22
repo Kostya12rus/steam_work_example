@@ -2,13 +2,15 @@ from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
 
 class EventName(Enum):
-    ON_GET_JWT_TOKEN = "on_get_jwt_token"
-    ON_SECRET_KEY_LOADED = "on_secret_key_loaded"
-    ON_AUTHENTICATED_SUCCESS = "on_authenticated_success"
-    ON_UNAUTHENTICATED = "on_unauthenticated"
-    ON_NEED_REFRESH_TOKEN = "on_need_refresh_token"
-    ON_BALANCE_UPDATE = "on_balance_update"
-    ON_STEAM_PROFILE_LOADED = "on_steam_profile_loaded"
+    ON_ACCOUNT_SESSION_EXPIRED = "on_account_session_expired"
+    ON_ACCOUNT_LOGGED_IN = "on_account_logged_in"
+    ON_ACCOUNT_LOGGED_ERROR = "on_account_logged_error"
+    ON_ACCOUNT_LOGGED_OUT = "on_account_logged_out"
+
+    ON_QR_CODE_READY = "on_qr_code_ready"
+    ON_QR_CODE_TIMEOUT = "on_qr_code_timeout"
+    ON_REQUEST_CONFIRMATION_DEVICE = "on_request_confirmation_device"
+    ON_REQUEST_CONFIRMATION_EMAIL = "on_request_confirmation_email"
 
 
 class CallbackManager:

@@ -1,5 +1,5 @@
 import requests
-import threading
+from app.callback import callback_manager, EventName
 
 class Account:
     def __init__(self):
@@ -12,19 +12,8 @@ class Account:
     def is_alive_session(self, is_callback: bool = True) -> bool:
         req = self.session.get("https://steamcommunity.com")
         is_success = req.ok and self.account_name.lower() in req.text.lower()
-        if is_callback and not is_success: threading.Thread(target=self.__on_callback_callback_session_expired).start()
+        if is_callback and not is_success: callback_manager.trigger(EventName.ON_ACCOUNT_SESSION_EXPIRED, self)
         return is_success
-    def register_callback_session_expired(self, func):
-        if not callable(func): return
-        if func in self.callback_session_expired: return
-        self.callback_session_expired.append(func)
-    def unregister_callback_session_expired(self, func):
-        if not callable(func): return
-        if func not in self.callback_session_expired: return
-        self.callback_session_expired.remove(func)
-    def __on_callback_callback_session_expired(self):
-        for callback in self.callback_session_expired:
-            threading.Thread(target=callback, args=(self,)).start()
     def get_save_data(self):
         return {
             'account_name': self.account_name,

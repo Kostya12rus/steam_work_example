@@ -5,7 +5,6 @@ import re
 import time
 
 from requests import Session
-
 from app.core import Account
 
 

@@ -2,6 +2,7 @@ import flet as ft
 from app.database import sql_manager
 from app.core import Account
 from app.package.steam_session import steam_session_manager
+from app.callback import callback_manager, EventName
 
 class Title(ft.Row):
     def __init__(self, title_text: str, size: int = 20, color: ft.colors = ft.colors.BLUE, text_align: ft.TextAlign = ft.TextAlign.CENTER):
@@ -20,13 +21,14 @@ class BasePage(ft.NavigationRailDestination):
         self.page_content = None
         self.account: Account = None
 
-        steam_session_manager.register_callback_authenticated(self.__new_account)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_IN, self.__new_account)
 
-        steam_session_manager.register_callback_logout(self.on_callback_logout)
-        steam_session_manager.register_callback_authenticated(self.on_callback_authenticated)
-        steam_session_manager.register_callback_authenticated_error(self.on_callback_authenticated_error)
-        steam_session_manager.register_callback_qr_code_ready(self.on_callback_qr_code_ready)
-        steam_session_manager.register_callback_qr_code_timeout(self.on_callback_qr_code_timeout)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_IN, self.on_callback_authenticated)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_OUT, self.on_callback_logout)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_ERROR, self.on_callback_authenticated_error)
+
+        callback_manager.register(EventName.ON_QR_CODE_READY, self.on_callback_qr_code_ready)
+        callback_manager.register(EventName.ON_QR_CODE_TIMEOUT, self.on_callback_qr_code_timeout)
 
     def on_callback_logout(self):
         ...

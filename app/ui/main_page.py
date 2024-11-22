@@ -1,4 +1,6 @@
 import flet as ft
+
+from app.callback import callback_manager, EventName
 from app.ui.widgets import ThemeToggleButton, ColorMenuButton
 from app.ui.pages import LoginPage, ProfilePage, TradePage
 from app.package.steam_session import note_js_utility, steam_session_manager
@@ -9,13 +11,14 @@ class MainPageContent(ft.Row):
     def __init__(self):
         super().__init__()
 
-        steam_session_manager.register_callback_logout(self.on_callback_logout)
-        steam_session_manager.register_callback_authenticated(self.on_callback_authenticated)
-        steam_session_manager.register_callback_authenticated_error(self.on_callback_authenticated_error)
-        steam_session_manager.register_callback_qr_code_ready(self.on_callback_qr_code_ready)
-        steam_session_manager.register_callback_qr_code_timeout(self.on_callback_qr_code_timeout)
-        steam_session_manager.register_callback_request_confirmation_device(self.on_callback_request_confirmation_device)
-        steam_session_manager.register_callback_request_confirmation_email(self.on_callback_request_confirmation_email)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_OUT, self.on_callback_logout)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_IN, self.on_callback_authenticated)
+        callback_manager.register(EventName.ON_ACCOUNT_LOGGED_ERROR, self.on_callback_authenticated_error)
+
+        callback_manager.register(EventName.ON_QR_CODE_READY, self.on_callback_qr_code_ready)
+        callback_manager.register(EventName.ON_QR_CODE_TIMEOUT, self.on_callback_qr_code_timeout)
+        callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_DEVICE, self.on_callback_request_confirmation_device)
+        callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_EMAIL, self.on_callback_request_confirmation_email)
 
         self._login_page = LoginPage()
         self._profile_page = ProfilePage()

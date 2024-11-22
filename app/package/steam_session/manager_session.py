@@ -9,115 +9,13 @@ import threading
 import subprocess
 
 from app.core.manager_class import Account
+from app.callback import callback_manager, EventName
 
 
 class CreateSteamSession:
     def __init__(self):
         self.__path_js_dir = pathlib.Path(os.path.abspath(__file__)).parent
-
         self.already_work = False
-
-        self.callback_logout = []
-        self.callback_session_expired = []
-        self.callback_authenticated = []
-        self.callback_authenticated_error = []
-
-        self.callback_qr_code_ready = []
-        self.callback_qr_code_timeout = []
-
-        self.callback_request_confirmation_device = []
-        self.callback_request_confirmation_email = []
-
-    def register_callback_logout(self, func):
-        if not callable(func): return
-        if func in self.callback_logout: return
-        self.callback_logout.append(func)
-    def register_callback_session_expired(self, func):
-        if not callable(func): return
-        if func in self.callback_session_expired: return
-        self.callback_session_expired.append(func)
-    def register_callback_authenticated(self, func):
-        if not callable(func): return
-        if func in self.callback_authenticated: return
-        self.callback_authenticated.append(func)
-    def register_callback_authenticated_error(self, func):
-        if not callable(func): return
-        if func in self.callback_authenticated_error: return
-        self.callback_authenticated_error.append(func)
-    def register_callback_qr_code_ready(self, func):
-        if not callable(func): return
-        if func in self.callback_qr_code_ready: return
-        self.callback_qr_code_ready.append(func)
-    def register_callback_qr_code_timeout(self, func):
-        if not callable(func): return
-        if func in self.callback_qr_code_timeout: return
-        self.callback_qr_code_timeout.append(func)
-    def register_callback_request_confirmation_device(self, func):
-        if not callable(func): return
-        if func in self.callback_request_confirmation_device: return
-        self.callback_request_confirmation_device.append(func)
-    def register_callback_request_confirmation_email(self, func):
-        if not callable(func): return
-        if func in self.callback_request_confirmation_email: return
-        self.callback_request_confirmation_email.append(func)
-
-    def unregister_callback_logout(self, func):
-        if not callable(func): return
-        if func in self.callback_logout:
-            self.callback_logout.remove(func)
-    def unregister_callback_session_expired(self, func):
-        if not callable(func): return
-        if func not in self.callback_session_expired: return
-        self.callback_session_expired.remove(func)
-    def unregister_callback_authenticated(self, func):
-        if not callable(func): return
-        if func in self.callback_authenticated:
-            self.callback_authenticated.remove(func)
-    def unregister_callback_authenticated_error(self, func):
-        if not callable(func): return
-        if func in self.callback_authenticated_error:
-            self.callback_authenticated_error.remove(func)
-    def unregister_callback_qr_code_ready(self, func):
-        if not callable(func): return
-        if func in self.callback_qr_code_ready:
-            self.callback_qr_code_ready.remove(func)
-    def unregister_callback_qr_code_timeout(self, func):
-        if not callable(func): return
-        if func in self.callback_qr_code_timeout:
-            self.callback_qr_code_timeout.remove(func)
-    def unregister_callback_request_confirmation_device(self, func):
-        if not callable(func): return
-        if func in self.callback_request_confirmation_device:
-            self.callback_request_confirmation_device.remove(func)
-    def unregister_callback_request_confirmation_email(self, func):
-        if not callable(func): return
-        if func in self.callback_request_confirmation_email:
-            self.callback_request_confirmation_email.remove(func)
-
-    def on_callback_logout(self):
-        for callback in self.callback_logout:
-            threading.Thread(target=callback).start()
-    def __on_callback_callback_session_expired(self, account: Account):
-        for callback in self.callback_session_expired:
-            threading.Thread(target=callback, args=(account,)).start()
-    def __on_callback_authenticated(self, account: Account):
-        for callback in self.callback_authenticated:
-            threading.Thread(target=callback, args=(account,)).start()
-    def __on_callback_authenticated_error(self, error_message: str):
-        for callback in self.callback_authenticated_error:
-            threading.Thread(target=callback, args=(error_message,)).start()
-    def __on_callback_qr_code_ready(self, qr_code_image):
-        for callback in self.callback_qr_code_ready:
-            threading.Thread(target=callback, args=(qr_code_image,)).start()
-    def __on_callback_qr_code_timeout(self):
-        for callback in self.callback_qr_code_timeout:
-            threading.Thread(target=callback).start()
-    def __on_callback_request_confirmation_device(self):
-        for callback in self.callback_request_confirmation_device:
-            threading.Thread(target=callback).start()
-    def __on_callback_request_confirmation_email(self):
-        for callback in self.callback_request_confirmation_email:
-            threading.Thread(target=callback).start()
 
     @staticmethod
     def __parse_cookie_line(line: str):
@@ -165,7 +63,7 @@ class CreateSteamSession:
         script_path = self.__path_js_dir / 'session_qrcode.js'
         if not script_path.is_file():
             print(f"Скрипт {script_path} не найден.")
-            self.__on_callback_authenticated_error(f"Скрипт {script_path} не найден.")
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, f"Скрипт {script_path} не найден.")
             self.already_work = False
             return
 
@@ -181,7 +79,6 @@ class CreateSteamSession:
             )
             qr_code_generated = False
             account = Account()
-            account.register_callback_session_expired(self.__on_callback_callback_session_expired)
 
             def read_stdout():
                 nonlocal qr_code_generated, account
@@ -191,7 +88,7 @@ class CreateSteamSession:
                         if line.startswith("http"):
                             qr_url = line
                             qr_code_image = self.__generate_qr_code(qr_url)
-                            self.__on_callback_qr_code_ready(qr_code_image)
+                            callback_manager.trigger(EventName.ON_QR_CODE_READY, qr_code_image)
                             qr_code_generated = True
                         elif line.startswith("accountName"):
                             account_name = line.split("=")[1].strip()
@@ -218,19 +115,19 @@ class CreateSteamSession:
                 if time.time() - start_time > timeout:
                     print("Таймаут ожидания QR-кода.")
                     process.terminate()
-                    self.__on_callback_qr_code_timeout()
+                    callback_manager.trigger(EventName.ON_QR_CODE_TIMEOUT)
                     self.already_work = False
                     return
                 time.sleep(0.5)
 
             if process.returncode == 0:
-                self.__on_callback_authenticated(account)
+                callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_IN, account)
             else:
-                self.__on_callback_qr_code_timeout()
+                callback_manager.trigger(EventName.ON_QR_CODE_TIMEOUT)
         except FileNotFoundError:
-            self.__on_callback_authenticated_error("Node.js не установлен или не добавлен в PATH.")
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, "Node.js не установлен или не добавлен в PATH.")
         except Exception as e:
-            self.__on_callback_authenticated_error(str(e))
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, str(e))
         finally:
             self.already_work = False
 
@@ -241,7 +138,7 @@ class CreateSteamSession:
         script_path = self.__path_js_dir / 'session_login_password.js'
         if not script_path.is_file():
             print(f"Скрипт {script_path} не найден.")
-            self.__on_callback_authenticated_error(f"Скрипт {script_path} не найден.")
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, f"Скрипт {script_path} не найден.")
             self.already_work = False
             return
 
@@ -258,7 +155,6 @@ class CreateSteamSession:
             account = Account()
             account.account_name = login
             account.password = password
-            account.register_callback_session_expired(self.__on_callback_callback_session_expired)
 
             def read_stdout():
                 nonlocal account
@@ -278,9 +174,9 @@ class CreateSteamSession:
                             cookie = self.__parse_cookie_line(line)
                             account.session.cookies.set_cookie(cookie)
                         elif 'DeviceConfirmation' in line:
-                            self.__on_callback_request_confirmation_device()
+                            callback_manager.trigger(EventName.ON_REQUEST_CONFIRMATION_DEVICE)
                         elif 'EmailConfirmation' in line:
-                            self.__on_callback_request_confirmation_email()
+                            callback_manager.trigger(EventName.ON_REQUEST_CONFIRMATION_EMAIL)
 
             stdout_thread = threading.Thread(target=read_stdout, daemon=True)
             stdout_thread.start()
@@ -292,19 +188,19 @@ class CreateSteamSession:
                 if process.poll() is not None: break
                 if time.time() - start_time > timeout:
                     process.terminate()
-                    self.__on_callback_authenticated_error("Таймаут ожидания Входа в аккаунт.")
+                    callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, "Таймаут ожидания Входа в аккаунт.")
                     self.already_work = False
                     return
                 time.sleep(0.5)
 
             if process.returncode == 0:
-                self.__on_callback_authenticated(account)
+                callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_IN, account)
             else:
-                self.__on_callback_authenticated_error("Authentication failed.")
+                callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, "Authentication failed.")
         except FileNotFoundError:
-            self.__on_callback_authenticated_error("Node.js не установлен или не добавлен в PATH.")
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, "Node.js не установлен или не добавлен в PATH.")
         except Exception as e:
-            self.__on_callback_authenticated_error(str(e))
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, str(e))
         finally:
             self.already_work = False
 
@@ -312,7 +208,7 @@ class CreateSteamSession:
         if not account or not account.refresh_token: return
         if self.already_work: return
         if account.is_alive_session():
-            self.__on_callback_authenticated(account)
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_IN, account)
             return
 
         self.already_work = True
@@ -320,7 +216,7 @@ class CreateSteamSession:
         script_path = self.__path_js_dir / 'session_refresh_token.js'
         if not script_path.is_file():
             print(f"Скрипт {script_path} не найден.")
-            self.__on_callback_authenticated_error(f"Скрипт {script_path} не найден.")
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, f"Скрипт {script_path} не найден.")
             self.already_work = False
             return
 
@@ -360,20 +256,19 @@ class CreateSteamSession:
                 if process.poll() is not None: break
                 if time.time() - start_time > timeout:
                     process.terminate()
-                    self.__on_callback_authenticated_error("Таймаут ожидания Входа в аккаунт.")
+                    callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, "Таймаут ожидания Входа в аккаунт.")
                     self.already_work = False
                     return
                 time.sleep(0.5)
 
             if process.returncode == 0:
-                self.__on_callback_authenticated(account)
-                account.register_callback_session_expired(self.__on_callback_callback_session_expired)
+                callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_IN, account)
             else:
-                self.__on_callback_authenticated_error("Ошибка входа")
+                callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, "Authentication failed.")
         except FileNotFoundError:
-            self.__on_callback_authenticated_error("Node.js не установлен или не добавлен в PATH.")
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, "Node.js не установлен или не добавлен в PATH.")
         except Exception as e:
-            self.__on_callback_authenticated_error(str(e))
+            callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, str(e))
         finally:
             self.already_work = False
 

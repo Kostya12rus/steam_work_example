@@ -1,5 +1,4 @@
-import threading
-from typing import Callable, Any, Dict, List
+from typing import Callable, Any, Dict
 
 from app.callback import callback_manager
 from app.database.sqlite_manager import sql_manager
@@ -31,9 +30,7 @@ def make_property(key_name: str, type_value: type = str, default_return=None):
             sql_manager.save_setting(key_name, value)
 
         # Вызов обратных вызовов, если они существуют
-        if hasattr(self, '_callbacks') and key_name in self._callbacks:
-            for callback in self._callbacks[key_name]:
-                threading.Thread(target=callback, args=(value,)).start()
+        callback_manager.trigger(key_name, value)
 
     return property(getter, setter)
 

@@ -1,1 +1,1 @@
-from .callbacks import callback_manager
+from .callbacks import callback_manager, EventName
