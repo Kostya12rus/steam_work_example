@@ -1,0 +1,12 @@
+aiohttp
+requests
+pycountry
+qrcode[pil]
+cryptography
+
+steam
+loguru
+Pillow
+pyinstaller
+flet==0.24.1
+beautifulsoup4
