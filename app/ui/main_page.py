@@ -2,9 +2,8 @@ import flet as ft
 
 from app.callback import callback_manager, EventName
 from app.ui.widgets import ThemeToggleButton, ColorMenuButton
-# from app.ui.pages import LoginPage, ProfilePage, TradePage
 from app.ui.pages import page_manager
-from app.package.steam_session import note_js_utility, steam_session_manager
+from app.package.steam_session import note_js_utility
 from app.core import Account
 
 
@@ -21,14 +20,6 @@ class MainPageContent(ft.Row):
         callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_DEVICE, self.on_callback_request_confirmation_device)
         callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_EMAIL, self.on_callback_request_confirmation_email)
 
-        # self._login_page = LoginPage()
-        # self._profile_page = ProfilePage()
-        # self._trade_page = TradePage()
-        # self._pages = [
-        #     self._login_page,
-        #     self._profile_page,
-        #     self._trade_page,
-        # ]
         self._pages = page_manager.get_pages()
 
         self.expand = True

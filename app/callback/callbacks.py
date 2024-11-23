@@ -14,6 +14,10 @@ class EventName(Enum):
     ON_REQUEST_CONFIRMATION_DEVICE = "on_request_confirmation_device"
     ON_REQUEST_CONFIRMATION_EMAIL = "on_request_confirmation_email"
 
+    ON_APP_ID_ADDED = "on_app_id_added"
+    ON_APP_ID_REMOVED = "on_app_id_removed"
+    ON_APP_ID_SELECTED = "on_app_id_selected"
+
 
 class CallbackManager:
     _instance = None

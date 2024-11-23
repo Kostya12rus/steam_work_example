@@ -5,7 +5,7 @@ import sqlite3
 import threading
 
 from app.logger import logger
-from app.core import Account
+from app.core import Account, AppDetails
 from .cyber_safe import store_encrypted_data as encrypt, retrieve_encrypted_data as decrypt
 
 tables_structure = {
@@ -18,6 +18,11 @@ tables_structure = {
         '''
             login       TEXT UNIQUE,
             client      TEXT
+        ''',
+    'apps':
+        '''
+            appid           INTEGER UNIQUE,
+            app_details     TEXT
         ''',
 }
 
@@ -41,6 +46,7 @@ class SqliteDatabaseManager:
     def __create_all_tables(self) -> None:
         for table_name in tables_structure:
             self.__create_table(table_name, tables_structure[table_name])
+
 
     def account_save(self, account: 'Account'):
         if not isinstance(account, Account): return
@@ -92,6 +98,60 @@ class SqliteDatabaseManager:
             except Exception:
                 logger.exception(f"Ошибка при получении аккаунтов")
 
+
+    def appdetails_save(self, app_details: 'AppDetails'):
+        if not isinstance(app_details, AppDetails): return
+        if not app_details.is_real_app(): return
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    save_data = app_details.get_save_data()
+                    app_details_client = self.encrypt_data(save_data)
+                    cursor.execute("INSERT OR REPLACE INTO apps (appid, app_details) VALUES (?, ?)", (app_details.appid, app_details_client))
+                    self.db_connection.commit()
+            except Exception:
+                logger.exception(f"Ошибка при обновлении приложения '{app_details.appid}'")
+    def appdetails_del(self, app_details: 'AppDetails'):
+        if not isinstance(app_details, AppDetails): return
+        if not app_details.is_real_app(): return
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM apps WHERE appid=?", (app_details.appid,))
+                    self.db_connection.commit()
+            except Exception:
+                logger.exception(f"Ошибка при обновлении приложения '{app_details.appid}'")
+    def appdetails_get(self, appid: int):
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT app_details FROM apps WHERE appid=?", (appid,))
+                    row = cursor.fetchone()
+                    if row:
+                        value = row[0]
+                        try:
+                            return AppDetails(self.decrypt_data(value))
+                        except:
+                            pass
+                        return value
+                    return None
+            except Exception:
+                logger.exception(f"Ошибка при получении приложения '{appid}'")
+    def appdetails_all_get(self):
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT * FROM apps")
+                    row = cursor.fetchall()
+                    return [AppDetails(self.decrypt_data(app[1])) for app in row]
+            except Exception:
+                logger.exception(f"Ошибка при получении приложений")
+
+
     def save_setting(self, name: str, value: str | list | dict):
         try:
             with self.__db_lock, self.__connect() as conn:
@@ -118,6 +178,7 @@ class SqliteDatabaseManager:
                 return None
         except Exception:
             logger.exception(f"Ошибка при получении настройки '{name}'")
+
 
     def encrypt_data(self, data: any) -> bytes | None:
         """

@@ -12,14 +12,6 @@ class SteamAPIUtility:
     def __init__(self, account: Account):
         self.account = account
 
-    def __is_session_alive(self, session: Session) -> bool:
-        main_page_response = session.get('https://steamcommunity.com')
-        return self.account.account_name.lower() in main_page_response.text.lower()
-
-    def is_session_alive(self):
-        if not self.account.session: return False
-        return self.__is_session_alive(self.account.session)
-
     def get_inventory_items(self, steam_id: str | int, appid=3017120, start=0, context_id=2):
         if not self.account or not self.account.is_alive_session(): return
         if str(self.account.steam_id) == str(steam_id):
@@ -85,7 +77,7 @@ class SteamAPIUtility:
         return None
 
     def create_trade_offer(self, partner_steam32id: str, partner_token: str, items: dict = None, tradeoffermessage: str = ''):
-        if not self.account or not self.account.is_alive_session(is_callback=True): return
+        if not self.account or not self.account.is_alive_session(): return
         if not partner_steam32id: return False
         text_steam_send = ""
         session_id = self.account.session.cookies.get('sessionid', domain='steamcommunity.com')
@@ -121,20 +113,15 @@ class SteamAPIUtility:
             print(f"Обмен не отправлен, Steam ответил: {text_steam_send}")
             return
 
-    def get_steam_web_token(self):
-        if not self.account or not self.account.is_alive_session(): return
-
-        try:
-            response = self.account.session.get('https://steamcommunity.com/my/', timeout=10)
-
-            token_pattern = re.compile(r'loyalty_webapi_token\s*=\s*"([^"]+)"')
-            match = token_pattern.search(response.text)
-
-            if match:
-                token = match.group(1).replace('&quot;', '')
-                return token
-        except:
-            return None
+    def get_appid_details(self, appid: int) -> dict:
+        url = f'https://store.steampowered.com/api/appdetails?appids={appid}'
+        req = self.account.session.get(url)
+        if not req.ok: return {}
+        req_json = req.json()
+        if not req_json: return {}
+        app_details = req_json.get(str(appid), {})
+        if not app_details and not app_details.get('success', False): return {}
+        return app_details.get('data', {})
 
 
 class InventoryManager:
