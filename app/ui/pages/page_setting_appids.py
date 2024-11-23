@@ -129,18 +129,6 @@ class AppIDContent(ft.Container):
         self.visible = False
         if self.page: self.update()
 
-Напиши CommitMessage для GitHub
-E:\PycharmProjects\steam_work_example\app\callback\callbacks.py                             Добавил EventName для работы с AppIDs
-E:\PycharmProjects\steam_work_example\app\core\manager_class\__init__.py                    добавил импорт AppDetails
-E:\PycharmProjects\steam_work_example\app\core\manager_class\account_class.py               добавил метод get_steam_web_token
-E:\PycharmProjects\steam_work_example\app\core\manager_class\app_class.py                   Класс AppDetails для работы с AppIDs
-E:\PycharmProjects\steam_work_example\app\database\sqlite_manager.py                        Добавил работу с AppDetails сохранение, удаление и прочие с sqlite
-E:\PycharmProjects\steam_work_example\app\package\data_collectors\steam_api_utility.py      Удалил get_steam_web_token добавил get_appid_details
-E:\PycharmProjects\steam_work_example\app\package\steam_session\package-lock.json           Само обновилось я тут непричем
-E:\PycharmProjects\steam_work_example\app\ui\main_page.py                                   Удалил коментарии и ненужные импорты
-E:\PycharmProjects\steam_work_example\app\ui\pages\__page_example.py                        Дописал недостающие переменные
-E:\PycharmProjects\steam_work_example\app\ui\pages\page_setting_appids.py                   Сделал для будущих наработок страницу AppIDs
-
 class AppIDsPageContent(ft.Column):
     def __init__(self):
         # Class variables
@@ -203,7 +191,6 @@ class AppIDsPageContent(ft.Column):
         if self.page: self.page.update()
 
     def __on_app_id_removed(self, app_details: AppDetails):
-        print('App ID removed', app_details.name, app_details.price_overview)
         self.__load_all_apps()
 
     def __on_click_button_add(self, e):
@@ -215,7 +202,6 @@ class AppIDsPageContent(ft.Column):
         if self.page: self.app_ids_input.update()
         app_details = self.get_appdetails(appid=app_id)
         if not app_details or not app_details.is_real_app(): return
-        print('App ID added', app_details.name, app_details.price_overview)
         sql_manager.appdetails_save(app_details)
         callback_manager.trigger(EventName.ON_APP_ID_ADDED, app_details)
         self.__load_all_apps()
@@ -240,13 +226,4 @@ class AppIDsPage(BasePage):
         self.icon = ft.icons.PAYMENT
         self.selected_icon = ft.icons.PAYMENT_ROUNDED
 
-        # self.disabled = True
-        # self.disabled_is_logout = True
-
         self.page_content = AppIDsPageContent()
-
-    # def on_callback_authenticated(self, account: Account):
-    #     self.page_content.account = account
-    #
-    # def on_callback_logout(self):
-    #     self.page_content.account = None
