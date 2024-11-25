@@ -290,8 +290,8 @@ class ProfilePage(BasePage):
         super().__init__()
         self.name = 'profile'
         self.label = 'Профиль'
-        self.icon = ft.icons.PERSON
-        self.selected_icon = ft.icons.PERSON_OUTLINED
+        self.icon = ft.icons.PERSON_OUTLINED
+        self.selected_icon = ft.icons.PERSON
 
         self.disabled = True
         self.disabled_is_logout = True

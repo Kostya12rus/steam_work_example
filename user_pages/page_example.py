@@ -1,5 +1,5 @@
 import flet as ft
-from app.ui.pages.base import BasePage, Title
+from app.ui.pages import BasePage, Title, AppIDSelector
 from app.core import Account
 
 
@@ -10,8 +10,14 @@ class ExamplePageContent(ft.Column):
 
         self.title = Title('EXAMPLE PAGE')
 
+        # Example work class AppIDSelector()
+        self.app_id_selector = AppIDSelector()
+        self.app_id_selector.use_config = True
+        self.app_id_selector.on_app_id_select = lambda selected_app_id: print(selected_app_id)
+
         self.controls = [
             self.title,
+            self.app_id_selector,
         ]
 
 class ExamplePage(BasePage):

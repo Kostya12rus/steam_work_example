@@ -115,4 +115,9 @@ class Config:
         if key_name not in self._properties:
             return None
         return getattr(self, key_name)
+
+    def set_property(self, key_name: str, value):
+        if key_name not in self._properties:
+            return None
+        setattr(self, key_name, value)
 config = Config()
