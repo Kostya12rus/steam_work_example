@@ -17,7 +17,7 @@ class NodeJSUtility:
             cmd[0] += ".cmd"  # Пример: "npm" -> "npm.cmd"
         return cmd
 
-    def run_command(self, cmd: list[str], capture_output: bool = True):
+    def run_command(self, cmd: list[str], capture_output: bool = True, is_debug: bool = False):
         """
         Выполняет команду и возвращает результат.
         """
@@ -31,7 +31,7 @@ class NodeJSUtility:
                 text=True,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            if capture_output and result.stdout:
+            if capture_output and result.stdout and is_debug:
                 print(result.stdout.strip())
             return True
         except subprocess.CalledProcessError as e:
@@ -46,7 +46,6 @@ class NodeJSUtility:
         """
         Проверяет, установлен ли Node.js, выполняя команду `node -v`.
         """
-        print("Проверка установки Node.js...")
         if self.run_command(["node", "-v"]):
             return True
         return False
@@ -55,7 +54,6 @@ class NodeJSUtility:
         """
         Проверяет, установлен ли npm, выполняя команду `npm -v`.
         """
-        print("Проверка установки npm...")
         if self.run_command(["npm", "-v"]):
             return True
         return False
@@ -67,83 +65,89 @@ class NodeJSUtility:
         package_json = self.path / "package.json"
         if package_json.is_file():
             return True
-        print("Файл package.json не найден в указанной директории.")
         return False
 
-    def update_dependencies(self):
+    def update_dependencies(self, is_debug: bool = False):
         """
         Обновляет зависимости в указанной директории.
         Выполняет `npm install` и `npm update`.
         """
-        print(f"Работаем в директории: {self.path}")
+        if is_debug: print(f"Работаем в директории: {self.path}")
         if not self.check_package_json():
+            if is_debug: print("Файл package.json не найден в указанной директории.")
             return False
 
-        print("Устанавливаем зависимости с помощью `npm install`...")
+        if is_debug: print("Устанавливаем зависимости с помощью `npm install`...")
         if not self.run_command(["npm", "install"]):
             return False
-        print("Зависимости успешно установлены.")
+        if is_debug: print("Зависимости успешно установлены.")
 
-        print("Обновляем зависимости с помощью `npm update`...")
+        if is_debug: print("Обновляем зависимости с помощью `npm update`...")
         if not self.run_command(["npm", "update"]):
             return False
-        print("Зависимости успешно обновлены.")
+        if is_debug: print("Зависимости успешно обновлены.")
         return True
 
-    def upgrade_to_latest(self):
+    def upgrade_to_latest(self, is_debug: bool = False):
         """
         Обновляет package.json до последних версий зависимостей с помощью npm-check-updates.
         Затем выполняет `npm install` для установки обновленных зависимостей.
         """
-        print("Проверка установки npm-check-updates...")
+        if is_debug: print("Проверка установки npm-check-updates...")
         if not self.run_command(["ncu", "-v"]):
-            print("npm-check-updates не установлен. Устанавливаем глобально...")
+            if is_debug: print("npm-check-updates не установлен. Устанавливаем глобально...")
             if not self.run_command(["npm", "install", "-g", "npm-check-updates"]):
                 return False
-            print("npm-check-updates успешно установлен.")
+            if is_debug: print("npm-check-updates успешно установлен.")
 
-        print("Обновляем package.json до последних версий зависимостей с помощью `ncu -u`...")
+        if is_debug: print("Обновляем package.json до последних версий зависимостей с помощью `ncu -u`...")
         if not self.run_command(["ncu", "-u"]):
             return False
-        print("package.json успешно обновлен.")
+        if is_debug: print("package.json успешно обновлен.")
 
-        print("Устанавливаем обновленные зависимости с помощью `npm install`...")
+        if is_debug: print("Устанавливаем обновленные зависимости с помощью `npm install`...")
         if not self.run_command(["npm", "install"]):
             return False
-        print("Обновленные зависимости успешно установлены.")
+        if is_debug: print("Обновленные зависимости успешно установлены.")
 
-    def start_install(self):
+    def start_install(self, is_debug: bool = False):
         """
         Основной метод, который выполняет проверку установки Node.js и npm,
         а затем обновляет зависимости.
         """
-        print("Начало процесса обновления зависимостей...")
+        if is_debug: print("Начало процесса обновления зависимостей...")
+
+        if is_debug: print("Проверка установки Node.js...")
         if not self.is_node_installed():
-            print("Node.js не установлен. Пожалуйста, установите Node.js с официального сайта: https://nodejs.org/")
+            if is_debug: print("Node.js не установлен. Пожалуйста, установите Node.js с официального сайта: https://nodejs.org/")
             return False
 
+        if is_debug: print("Проверка установки npm...")
         if not self.is_npm_installed():
-            print("npm не установлен. Обычно npm устанавливается вместе с Node.js. Проверьте установку Node.js.")
+            if is_debug: print("npm не установлен. Обычно npm устанавливается вместе с Node.js. Проверьте установку Node.js.")
             return False
 
-        print("Node.js и npm установлены.")
-        return self.update_dependencies()
+        if is_debug: print("Node.js и npm установлены.")
+        return self.update_dependencies(is_debug=is_debug)
 
-    def start_upgrade(self):
+    def start_upgrade(self, is_debug: bool = False):
         """
         Метод для обновления зависимостей до последних доступных версий.
         """
-        print("Начало процесса обновления зависимостей до последних версий...")
+        if is_debug: print("Начало процесса обновления зависимостей до последних версий...")
+
+        if is_debug: print("Проверка установки Node.js...")
         if not self.is_node_installed():
-            print("Node.js не установлен. Пожалуйста, установите Node.js с официального сайта: https://nodejs.org/")
+            if is_debug: print("Node.js не установлен. Пожалуйста, установите Node.js с официального сайта: https://nodejs.org/")
             return False
 
+        if is_debug: print("Проверка установки npm...")
         if not self.is_npm_installed():
-            print("npm не установлен. Обычно npm устанавливается вместе с Node.js. Проверьте установку Node.js.")
+            if is_debug: print("npm не установлен. Обычно npm устанавливается вместе с Node.js. Проверьте установку Node.js.")
             return False
 
-        print("Node.js и npm установлены.")
-        self.upgrade_to_latest()
+        if is_debug: print("Node.js и npm установлены.")
+        self.upgrade_to_latest(is_debug=is_debug)
 
 
 note_js_utility = NodeJSUtility()

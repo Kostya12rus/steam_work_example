@@ -6,9 +6,9 @@
 **/[_]logs
 **/output
 **/node_modules
-**/build/
-**/dist/
-**/*.egg-info/
-**/*-lock.json/
+**/build
+**/dist
+**/*.egg-info
+**/*-lock.json
 **/changes.txt
 **/commits.txt

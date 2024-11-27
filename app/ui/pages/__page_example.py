@@ -1,5 +1,5 @@
 import flet as ft
-from app.ui.pages.base import BasePage, Title
+from app.ui.pages import BasePage, Title
 from app.core import Account
 
 

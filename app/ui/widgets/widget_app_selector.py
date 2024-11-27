@@ -2,11 +2,7 @@ import re
 import threading
 import flet as ft
 
-from app.ui.pages.base import BasePage, Title
 from app.core import AppDetails
-from app.database import sql_manager, config
-from app.callback import callback_manager, EventName
-
 
 class AppIDSelector(ft.FilledTonalButton):
     def __init__(
@@ -19,6 +15,7 @@ class AppIDSelector(ft.FilledTonalButton):
             on_app_id_select: callable = None
     ):
         super().__init__()
+        from app.ui.pages import Title
         # region Настройка кнопки
         self.text = 'Select App ID'
         self.icon = ft.icons.APPS
@@ -127,9 +124,9 @@ class AppIDSelector(ft.FilledTonalButton):
         # endregion
 
     def did_mount(self):
-        self._update_app_ids()
+        self._update_app_ids(is_click=True)
     def _on_button_click(self, e):
-        self._update_app_ids()
+        self._update_app_ids(is_click=True)
         self.page.open(self._dialog)
     def _on_dialog_close_click(self, e):
         self.page.close(self._dialog)
@@ -149,12 +146,15 @@ class AppIDSelector(ft.FilledTonalButton):
         if not self.use_config: return None
         config_name = self._get_config_name()
         if not config_name: return None
+        from app.database import config
+
         config.add_property(config_name, type_value=str, default_return="")
         return config.get_property(config_name)
     def _set_config_value(self, value):
         if not self.use_config: return
         config_name = self._get_config_name()
         if not config_name: return
+        from app.database import config
 
         config.add_property(config_name, type_value=str, default_return="")
         config.set_property(config_name, value)
@@ -166,11 +166,11 @@ class AppIDSelector(ft.FilledTonalButton):
             return str(self._dialog_radio_group.value)
         else:
             return ''
-    def set_select_game(self, *args, app_id: str | int=''):
+    def set_select_game(self, *args, app_id: str | int='', is_click: bool=False):
         if not app_id: app_id = ''
         app_id = str(app_id)
 
-        if self._dialog_radio_group.value == app_id:
+        if not is_click and self._dialog_radio_group.value == app_id:
             self._dialog_radio_group.value = ''
         else:
             if app_id in self._app_controls_map:
@@ -223,7 +223,8 @@ class AppIDSelector(ft.FilledTonalButton):
 
         return container
 
-    def _update_app_ids(self):
+    def _update_app_ids(self, is_click: bool=False):
+        from app.database import sql_manager
         self._app_details_list = sql_manager.appdetails_all_get()
         self._app_controls_map.update({
             str(app_details.appid): self._create_app_control(app_details)
@@ -244,7 +245,7 @@ class AppIDSelector(ft.FilledTonalButton):
         )
         if self.use_config:
             config_app_id = self._get_config_value()
-            self.set_select_game(app_id=config_app_id)
+            self.set_select_game(app_id=config_app_id, is_click=is_click)
         self._update_main_button()
 
     def _update_main_button(self):
@@ -298,209 +299,3 @@ class AppIDSelector(ft.FilledTonalButton):
         self._custom_app_details.save()
         self._update_app_ids()
         self.set_select_game(app_id=self._custom_app_details.appid)
-
-class AppIDContent(ft.Container):
-    """
-    Класс для отображения информации о приложении Steam в виде виджета.
-    """
-    def __init__(self, app_details: AppDetails):
-        super().__init__()
-        self.padding = 0
-        self.border = ft.border.all(1)
-        self.border_radius = ft.border_radius.all(5)
-        self.alignment = ft.alignment.center
-
-        self.app_details = app_details
-
-        self.logo_image = self.create_logo_image(app_details.image)
-        self.title_text = self.create_title_text(app_details.name)
-        self.store_link_button = self.create_store_link_button(app_details.store_url)
-        self.price_text = self.create_price_text(app_details.price_overview)
-        self.delete_button = self.create_delete_button()
-        self.details_column = self.create_details_column()
-
-        self.content = self.create_main_row()
-
-    def create_logo_image(self, image_url: str) -> ft.Column:
-        """
-        Создает виджет изображения для логотипа приложения.
-        """
-        logo = ft.Image(src=image_url)
-        logo.fit = ft.ImageFit.CONTAIN
-        logo.repeat = ft.ImageRepeat.NO_REPEAT
-        logo.height = 70
-
-        logo_column = ft.Column(spacing=0, expand=True)
-        logo_column.alignment = ft.MainAxisAlignment.CENTER
-        logo_column.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        logo_column.controls = [
-            logo
-        ]
-
-        return logo_column
-
-    def create_title_text(self, title: str) -> ft.Text:
-        """
-        Создает текстовый виджет для названия приложения.
-        """
-        text = ft.Text(title, expand=True, max_lines=1, size=20)
-        text.text_align = ft.TextAlign.CENTER
-        text.overflow = ft.TextOverflow.ELLIPSIS
-        text.weight = ft.FontWeight.BOLD
-        return text
-
-    def create_store_link_button(self, store_url: str) -> ft.FilledTonalButton:
-        """
-        Создает кнопку с ссылкой на магазин Steam.
-        """
-        button = ft.FilledTonalButton(icon=ft.icons.LINK, url=store_url)
-        button.text = "Open app Steam Store"
-        return button
-
-    def create_price_text(self, price: str) -> ft.Text:
-        """
-        Создает текстовый виджет для отображения цены.
-        """
-        price_text = ft.Text(expand=True, max_lines=1)
-        price_text.value = f"Price: {price if price else 'Free'}"
-        price_text.text_align = ft.TextAlign.CENTER
-        price_text.overflow = ft.TextOverflow.ELLIPSIS
-        return price_text
-
-    def create_details_column(self) -> ft.Column:
-        """
-        Создает колонку с текстовыми элементами.
-        """
-        column = ft.Column(spacing=1, expand=True)
-        column.alignment = ft.MainAxisAlignment.CENTER
-        column.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        column.controls = [
-            ft.Row(controls=[self.title_text]),
-            ft.Row(controls=[self.store_link_button], alignment=ft.MainAxisAlignment.CENTER),
-            ft.Row(controls=[self.price_text]),
-        ]
-        return column
-
-    def create_delete_button(self) -> ft.Column:
-        """
-        Создает виджет кнопки для удаления приложения.
-        """
-        button = ft.FilledTonalButton(icon=ft.icons.DELETE, icon_color=ft.colors.RED)
-        button.text = 'Delete App'
-        button.on_click = self.__on_click_delete_button
-
-        button_column = ft.Column(spacing=0, expand=True)
-        button_column.alignment = ft.MainAxisAlignment.CENTER
-        button_column.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        button_column.controls = [
-            button
-        ]
-
-        return button_column
-
-    def create_main_row(self) -> ft.Row:
-        """
-        Создает основную строку с логотипом и колонкой.
-        """
-
-        row = ft.Row(spacing=5)
-        row.alignment = ft.MainAxisAlignment.CENTER
-        row.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-        row.controls = [
-            self.logo_image,
-            self.details_column,
-            self.delete_button,
-        ]
-        return row
-
-    def __on_click_delete_button(self, e):
-        self.app_details.remove()
-
-        self.visible = False
-        if self.page: self.update()
-
-class AppIDsPageContent(ft.Column):
-    def __init__(self):
-        # Class variables
-        if True:
-            super().__init__()
-            self.expand = True
-            self.spacing = 0
-            self.alignment = ft.MainAxisAlignment.START
-            self.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-
-        # Variables
-        if True:
-            self.account = None
-            callback_manager.register(EventName.ON_APP_ID_REMOVED, self.__on_app_id_removed)
-            callback_manager.register(EventName.ON_APP_ID_ADDED, self.__on_app_id_removed)
-
-        # Title
-        if True:
-            self.title = Title('App IDs Settings')
-
-        # Input App IDs
-        if True:
-            self.app_ids_input = ft.TextField(dense=True, height=30)
-            self.app_ids_input.label = 'App ID | Steam App url'
-            self.app_ids_input.border_color = ft.colors.GREY
-            self.app_ids_input.content_padding = 10
-            self.app_ids_input.max_lines = 1
-            self.app_ids_input.multiline = False
-            self.app_ids_input.expand = True
-
-            self.button_add = ft.FilledTonalButton(height=30)
-            self.button_add.text = 'Add App ID'
-            self.button_add.icon = ft.icons.ADD
-            self.button_add.on_click = self.__on_click_button_add
-
-            self.app_ids_input_row = ft.Row(spacing=0)
-            self.app_ids_input_row.controls = [
-                self.app_ids_input,
-                self.button_add
-            ]
-
-        if True:
-            self.apps_id_column = ft.ListView()
-            self.apps_id_column.spacing = 0
-            self.apps_id_column.padding = ft.padding.only(right=10)
-            self.apps_id_column.expand = True
-
-        self.controls = [
-            self.title,
-            ft.Divider(),
-            self.app_ids_input_row,
-            self.apps_id_column
-        ]
-
-        self.__load_all_apps()
-
-    def __load_all_apps(self):
-        self.apps_id_column.controls = []
-        for app_details in sql_manager.appdetails_all_get():
-            self.apps_id_column.controls.append(AppIDContent(app_details))
-        if self.page: self.update()
-
-    def __on_app_id_removed(self, app_details: AppDetails):
-        self.__load_all_apps()
-
-    def __on_click_button_add(self, e):
-        app_id_input = self.app_ids_input.value
-        app_re = re.findall(r'app/(\d+)/', app_id_input)
-        app_id = app_re.pop() if app_re else app_id_input
-        if not app_id.isnumeric(): return
-        self.app_ids_input.value = ''
-        if self.page: self.app_ids_input.update()
-        app_details = AppDetails.create_from_appid(appid=app_id)
-        if not app_details or not app_details.is_real_app(): return
-        app_details.save()
-
-class AppIDsPage(BasePage):
-    def __init__(self):
-        super().__init__()
-        self.name = 'app_ids'
-        self.label = 'App IDs'
-        self.icon = ft.icons.APPS_OUTAGE
-        self.selected_icon = ft.icons.APPS_OUTAGE_ROUNDED
-
-        self.page_content = AppIDsPageContent()

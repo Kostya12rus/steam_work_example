@@ -72,6 +72,8 @@ class BasePage(ft.Container):
             if self.page: self.page.update()
 
     def build(self):
+        self.disabled = self.disabled_is_logout
+
         self._text_widget = ft.Text(f"{self.label}")
         self._text_widget.text_align = ft.TextAlign.CENTER
         self._text_widget.size = 14

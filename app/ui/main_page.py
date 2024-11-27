@@ -119,7 +119,7 @@ class MainPageContent(ft.Row):
 
 class MainPage:
     def __init__(self, title: str = None):
-        self.title = title or "Competitive Matches by Kostya12rus"
+        self.title = title or "NoName Project"
         self.page = None
         self.page_content = MainPageContent()
 
@@ -127,7 +127,7 @@ class MainPage:
         self.page = page
         self.page.window.min_width = 1130
         self.page.window.min_height = 600
-        self.page.padding = 0
+        self.page.padding = 2
         self.page.title = self.title
         self.page.spacing = 1
         self.page.controls = [

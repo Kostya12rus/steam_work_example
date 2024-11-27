@@ -1,5 +1,6 @@
 import flet as ft
-from app.ui.pages import BasePage, Title, AppIDSelector
+from app.ui.pages import BasePage, Title
+from app.ui.widgets import AppIDSelector
 from app.core import Account
 
 

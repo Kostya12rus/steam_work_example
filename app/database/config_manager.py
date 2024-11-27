@@ -36,8 +36,7 @@ def make_property(key_name: str, type_value: type = str, default_return=None):
 
 
 class Config:
-    # current_account = make_property('current_account', str, '')
-    # faseit_token = make_property('faseit_token', dict, {})
+    interval_update_inventory = make_property('interval_update_inventory', str, 'Not Update')
 
     def __init__(self):
         self._properties: Dict[str, property] = {}  # Хранилище свойств
@@ -112,12 +111,10 @@ class Config:
         Raises:
             AttributeError: Если свойства с указанным именем не существует.
         """
-        if key_name not in self._properties:
-            return None
+        if key_name not in self._properties: return None
         return getattr(self, key_name)
 
     def set_property(self, key_name: str, value):
-        if key_name not in self._properties:
-            return None
+        if key_name not in self._properties: return None
         setattr(self, key_name, value)
 config = Config()

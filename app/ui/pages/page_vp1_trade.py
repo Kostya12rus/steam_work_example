@@ -2,9 +2,9 @@ import re
 
 import flet as ft
 
-from app.ui.pages import BasePage, Title, AppIDSelector
-
 from app.core import Account
+from app.ui.widgets import AppIDSelector
+from app.ui.pages import BasePage, Title
 from app.package.data_collectors import get_steam_profile_info, get_steam_id_from_url
 from app.package.data_collectors.steam_api_utility import SteamAPIUtility, InventoryItemRgDescriptions, InventoryManager
 

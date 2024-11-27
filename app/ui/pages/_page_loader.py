@@ -3,7 +3,7 @@ import pathlib
 import sys
 import importlib
 from typing import Type
-from .base import BasePage
+from . import BasePage
 
 class PageManager:
     def __init__(self):
