@@ -2,7 +2,7 @@ import re
 
 import flet as ft
 
-from app.ui.pages.base import BasePage, Title
+from app.ui.pages import BasePage, Title, AppIDSelector
 
 from app.core import Account
 from app.package.data_collectors import get_steam_profile_info, get_steam_id_from_url
@@ -163,7 +163,7 @@ class TradeItemsContent(ft.Column):
         item_row.count_item_text.value = f'Count: {item.get_amount()}'
 
         item_row.button_remove_item = ft.IconButton(icon=ft.icons.CLOSE, icon_color=ft.colors.RED, width=20, height=20)
-        item_row.button_remove_item.style = ft.ButtonStyle(padding=ft.padding.all(0))
+        item_row.button_remove_item.style = ft.ButtonStyle(padding=ft.padding.all(0), alignment=ft.alignment.center)
         item_row.button_remove_item.tooltip = 'Remove item'
         item_row.button_remove_item.visual_density = ft.VisualDensity.COMPACT
         item_row.button_remove_item.on_click = lambda _: self.on_click_button_remove_item(owner_steam_id=owner_steam_id, item=item)
@@ -328,13 +328,13 @@ class ItemRowContent(ft.Row):
             self.count_item_input.on_change = self.on_change_count_item_input
 
             self.add_icon_button = ft.IconButton(icon=ft.icons.ADD, height=20)
-            self.add_icon_button.style = ft.ButtonStyle(padding=ft.padding.all(0))
+            self.add_icon_button.style = ft.ButtonStyle(padding=ft.padding.all(0), alignment=ft.alignment.center)
             self.add_icon_button.tooltip = 'Add item to Trade'
             self.add_icon_button.visual_density = ft.VisualDensity.COMPACT
             self.add_icon_button.on_click = self.on_press_add_icon_button
 
             self.add_all_tonal_button = ft.FilledTonalButton(height=20)
-            self.add_all_tonal_button.style = ft.ButtonStyle(padding=ft.padding.all(0))
+            self.add_all_tonal_button.style = ft.ButtonStyle(padding=ft.padding.all(0), alignment=ft.alignment.center)
             self.add_all_tonal_button.text = 'All'
             self.add_all_tonal_button.tooltip = 'Add all item to Trade'
             self.add_all_tonal_button.icon = ft.icons.ADD
@@ -417,8 +417,8 @@ class UserInventoryContent(ft.Column):
         # Variables
         if True:
             self.items: dict[str, InventoryManager] = {}
-            self.user_steam_id: str = None
-            self.account: Account = None
+            self.user_steam_id: str | None = None
+            self.account: Account | None = None
             self.callback_select_item = None
 
         # Title widgets
@@ -430,17 +430,10 @@ class UserInventoryContent(ft.Column):
             self.user_price_item.value = 'Price Items: 0'
             self.user_price_item.text_align = ft.TextAlign.LEFT
 
-            self.appid_input = ft.TextField(dense=True, content_padding=5, max_lines=1, multiline=False, expand=True)
-            self.appid_input.label = 'App ID'
-            self.appid_input.border_color = ft.colors.GREY
-            self.appid_input.on_change = self.on_change_appid_input
-
-            self.update_inventory_icon_button = ft.IconButton()
-            self.update_inventory_icon_button.tooltip = 'Update Inventory'
-            self.update_inventory_icon_button.visual_density = ft.VisualDensity.COMPACT
-            self.update_inventory_icon_button.icon = ft.icons.UPDATE
-            self.update_inventory_icon_button.disabled = True
-            self.update_inventory_icon_button.on_click = self.on_click_update_inventory_icon_button
+            self.appid_input = AppIDSelector()
+            self.appid_input.height = 20
+            self.appid_input.use_config = False
+            self.appid_input.on_app_id_select = self.__appid_input_on_app_id_select
 
             self.user_row = ft.Row(spacing=5)
             self.user_row.alignment = ft.MainAxisAlignment.CENTER
@@ -449,7 +442,6 @@ class UserInventoryContent(ft.Column):
                 self.user_count_item,
                 self.user_price_item,
                 self.appid_input,
-                self.update_inventory_icon_button
             ]
 
         # Add item control widget
@@ -475,13 +467,13 @@ class UserInventoryContent(ft.Column):
             self.count_item_input.on_change = self.on_change_count_item_input
 
             self.add_icon_button = ft.IconButton(icon=ft.icons.ADD, height=20)
-            self.add_icon_button.style = ft.ButtonStyle(padding=ft.padding.all(0))
+            self.add_icon_button.style = ft.ButtonStyle(padding=ft.padding.all(0), alignment=ft.alignment.center)
             self.add_icon_button.tooltip = 'Add items to Trade'
             self.add_icon_button.visual_density = ft.VisualDensity.COMPACT
             self.add_icon_button.on_click = self.on_press_add_icon_button
 
             self.add_all_tonal_button = ft.FilledTonalButton(height=20)
-            self.add_all_tonal_button.style = ft.ButtonStyle(padding=ft.padding.all(0))
+            self.add_all_tonal_button.style = ft.ButtonStyle(padding=ft.padding.all(0), alignment=ft.alignment.center)
             self.add_all_tonal_button.text = 'All'
             self.add_all_tonal_button.tooltip = 'Add all items to Trade'
             self.add_all_tonal_button.icon = ft.icons.ADD
@@ -512,16 +504,15 @@ class UserInventoryContent(ft.Column):
     def set_items(self, items: list[InventoryItemRgDescriptions]):
         self.items_column.controls = [ItemRowContent(item).set_callback_select_item(self.on_callback_select_item) for item in items]
         self.items_column.controls.sort(key=lambda x: (x.item.get_amount()), reverse=True)
-        if self.page: self.items_column.update()
+        if self.items_column.page: self.items_column.update()
 
-    def on_click_update_inventory_icon_button(self, *args):
+    def __appid_input_on_app_id_select(self, app_id=None):
+        if not app_id: return
         try:
-            if not self.account: return
-            if not self.account.is_alive_session(is_callback=True): return
-
-            appid_input = self.appid_input.value
-            self.update_inventory_icon_button.disabled = True
-            if self.page: self.user_row.update()
+            self.appid_input.disabled = True
+            if self.appid_input.page: self.appid_input.update()
+            if not self.account or not self.account.is_alive_session(): return
+            appid_input = str(app_id).strip()
 
             if appid_input not in self.items:
                 class_steam_api = SteamAPIUtility(account=self.account)
@@ -532,11 +523,11 @@ class UserInventoryContent(ft.Column):
                 items = self.items[appid_input]
 
             if items and items.success:
-                self.user_count_item.value = f'Count Items: {items.get_amount_items(only_tradable=True)}'
+                self.user_count_item.value = f'Count Items: {items.get_amount_items()}'
                 self.set_items(items.get_tradable_inventory())
         finally:
-            self.update_inventory_icon_button.disabled = False
-            if self.page: self.user_row.update()
+            self.appid_input.disabled = False
+            if self.page: self.update()
 
     def on_change_count_item_input(self, *args):
         if not self.count_item_input.value:
@@ -647,14 +638,6 @@ class UserInventoryContent(ft.Column):
         if self.callback_select_item:
             self.callback_select_item(self.user_steam_id, item)
 
-    def on_change_appid_input(self, *args):
-        if self.appid_input.value and self.update_inventory_icon_button.disabled:
-            self.update_inventory_icon_button.disabled = False
-            if self.page: self.update_inventory_icon_button.update()
-        elif not self.appid_input.value and not self.update_inventory_icon_button.disabled:
-            self.update_inventory_icon_button.disabled = True
-            if self.page: self.update_inventory_icon_button.update()
-
     def on_callback_remove_item(self, item: InventoryItemRgDescriptions):
         if not item: return
 
@@ -664,7 +647,7 @@ class UserInventoryContent(ft.Column):
             original_item.count_item_input.suffix_text = f"|{original_item.item.get_amount()}"
             if original_item.page: original_item.update()
 
-        self.user_count_item.value = f'Count Items: {sum([x.item.get_amount() for x in self.items_column.controls], start=0)}'
+        self.user_count_item.value = f'Count Items: {sum([x.item.get_amount() for x in self.items_column.controls])}'
         self.items_column.controls.sort(key=lambda x: (x.item.get_amount()), reverse=True)
         if self.page: self.update()
 
@@ -679,7 +662,7 @@ class TradePageContent(ft.Column):
 
         # Variables
         if True:
-            self.__account: Account = None
+            self.__account: Account | None = None
             self.__trade_url = ''
             self.partner_user_steam_id = None
             self.partner_user_trade_token = None

@@ -10,4 +10,5 @@
 **/dist/
 **/*.egg-info/
 **/*-lock.json/
-changes.txt
+**/changes.txt
+**/commits.txt

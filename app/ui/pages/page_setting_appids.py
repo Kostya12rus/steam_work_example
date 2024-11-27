@@ -9,13 +9,25 @@ from app.callback import callback_manager, EventName
 
 
 class AppIDSelector(ft.FilledTonalButton):
-    def __init__(self, use_config: bool = False, on_app_id_select: callable = None):
+    def __init__(
+            self,
+            height: int | float = None,
+            icon_size: int | float | None = 20,
+            padding: int | float | ft.Padding | None = ft.padding.all(0),
+            alignment: ft.Alignment | None = ft.alignment.center,
+            use_config: bool | None = False,
+            on_app_id_select: callable = None
+    ):
         super().__init__()
         # region Настройка кнопки
         self.text = 'Select App ID'
         self.icon = ft.icons.APPS
         self.on_click = self._on_button_click
-        self.style = ft.ButtonStyle(padding=ft.padding.all(0))
+        self.style = ft.ButtonStyle()
+        self.style.padding = padding if padding is not None else ft.padding.all(0)
+        self.style.alignment = alignment if alignment is not None else ft.alignment.center
+        self.style.icon_size = icon_size if icon_size is not None else 20
+        self.height = height
         # endregion
 
         # region Локальные переменные
@@ -31,7 +43,8 @@ class AppIDSelector(ft.FilledTonalButton):
         self._custom_radio_button = ft.Radio()
         self._custom_radio_button.toggleable = True
         self._custom_radio_button.value = 'custom'
-        self._custom_radio_button.disabled = True
+        self._custom_radio_button.active_color = ft.colors.WHITE
+        self._custom_radio_button.splash_radius = 0
 
         self._app_ids_input = ft.TextField()
         self._app_ids_input.height = 30
@@ -93,7 +106,7 @@ class AppIDSelector(ft.FilledTonalButton):
         self._custom_radio_container.padding = 0
         self._custom_radio_container.height = 30
         self._custom_radio_container.alignment = ft.alignment.center_right
-        self._custom_radio_container.on_click = lambda e: self.set_select_game('custom')
+        self._custom_radio_container.on_click = lambda e: self.set_select_game(app_id='custom')
         self._custom_radio_container.ink = True
         # endregion
 
@@ -157,15 +170,18 @@ class AppIDSelector(ft.FilledTonalButton):
         if not app_id: app_id = ''
         app_id = str(app_id)
 
-        if app_id in self._app_controls_map:
-            self._dialog_radio_group.value = str(app_id)
-        elif app_id == "custom":
-            self._dialog_radio_group.value = 'custom'
-        elif app_id:
-            self._dialog_radio_group.value = 'custom'
-            self._app_ids_input.value = str(app_id)
-        else:
+        if self._dialog_radio_group.value == app_id:
             self._dialog_radio_group.value = ''
+        else:
+            if app_id in self._app_controls_map:
+                self._dialog_radio_group.value = str(app_id)
+            elif app_id == "custom":
+                self._dialog_radio_group.value = 'custom'
+            elif app_id:
+                self._dialog_radio_group.value = 'custom'
+                self._app_ids_input.value = str(app_id)
+            else:
+                self._dialog_radio_group.value = ''
         if self._dialog_radio_group.page: self._dialog_radio_group.update()
 
     def _create_app_control(self, app_details: AppDetails):
@@ -173,7 +189,9 @@ class AppIDSelector(ft.FilledTonalButton):
         radio_button = ft.Radio()
         radio_button.toggleable = True
         radio_button.value = str(app_details.appid)
-        radio_button.disabled = True
+        # radio_button.disabled = True
+        radio_button.active_color = ft.colors.WHITE
+        radio_button.splash_radius = 0
 
         app_logo = ft.Image()
         app_logo.height = 20
@@ -224,8 +242,9 @@ class AppIDSelector(ft.FilledTonalButton):
                 if control == app_control
             )
         )
-        config_app_id = self._get_config_value()
-        self.set_select_game(app_id=config_app_id)
+        if self.use_config:
+            config_app_id = self._get_config_value()
+            self.set_select_game(app_id=config_app_id)
         self._update_main_button()
 
     def _update_main_button(self):
@@ -248,7 +267,7 @@ class AppIDSelector(ft.FilledTonalButton):
         threading.Thread(target=self.on_app_id_select, args=(selected_app_id,), daemon=True).start()
 
     def _on_change_app_ids_input(self, *args, set_custom=True):
-        if set_custom: self.set_select_game(app_id='custom')
+        if set_custom and self._dialog_radio_group.value != 'custom': self.set_select_game(app_id='custom')
 
         app_id_input = self._app_ids_input.value
         app_re = re.findall(r'app/(\d+)/', app_id_input)
