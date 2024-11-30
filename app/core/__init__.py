@@ -1,1 +1,1 @@
-from .manager_class import *
+from .manager_class import Account, AppDetails

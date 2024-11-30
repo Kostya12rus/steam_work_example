@@ -11,18 +11,18 @@ class AppDetails:
         self.price_overview = app_details.get('price_overview', {}).get('final_formatted', '')
         self.store_url = f'https://store.steampowered.com/app/{self.appid}/'
 
-    def get_save_data(self):
+    def get_save_data(self) -> dict:
         return self.__app_details
 
-    def is_real_app(self):
-        return self.appid != 0
+    def is_real_app(self) -> bool:
+        return bool(self.appid and self.appid != 0)
 
-    def save(self):
+    def save(self) -> None:
         from app.database import sql_manager
         sql_manager.appdetails_save(self)
         callback_manager.trigger(EventName.ON_APP_ID_ADDED, self)
 
-    def remove(self):
+    def remove(self) -> None:
         from app.database import sql_manager
         sql_manager.appdetails_del(self)
         callback_manager.trigger(EventName.ON_APP_ID_REMOVED, self)

@@ -131,6 +131,19 @@ class AppIDSelector(ft.FilledTonalButton):
     def _on_dialog_close_click(self, e):
         self.page.close(self._dialog)
 
+    def update_button(self, disabled: bool = None, icon: str = None, icon_color: str = None, text: str = None):
+        self.disabled = False if disabled is None else disabled
+        self.text = 'Select App ID' if not text else text
+
+        selected_app_id = self.get_select_game()
+        default_icon = ft.icons.PLAYLIST_ADD_CHECK_CIRCLE if selected_app_id else ft.icons.APPS
+        default_icon_color = ft.colors.GREEN if selected_app_id else None
+
+        self.icon = default_icon if not icon else icon
+        self.icon_color = default_icon_color if not icon_color else icon_color
+
+        if self.page: self.update()
+
     def _get_config_name(self):
         if not self.page:
             return None
@@ -142,7 +155,7 @@ class AppIDSelector(ft.FilledTonalButton):
         if not parent_hierarchy:
             return None
         return f'{"_".join(parent_hierarchy)}_{self.__class__.__name__}'
-    def _get_config_value(self):
+    def get_config_value(self):
         if not self.use_config: return None
         config_name = self._get_config_name()
         if not config_name: return None
@@ -150,7 +163,7 @@ class AppIDSelector(ft.FilledTonalButton):
 
         config.add_property(config_name, type_value=str, default_return="")
         return config.get_property(config_name)
-    def _set_config_value(self, value):
+    def set_config_value(self, value):
         if not self.use_config: return
         config_name = self._get_config_name()
         if not config_name: return
@@ -244,7 +257,7 @@ class AppIDSelector(ft.FilledTonalButton):
             )
         )
         if self.use_config:
-            config_app_id = self._get_config_value()
+            config_app_id = self.get_config_value()
             self.set_select_game(app_id=config_app_id, is_click=is_click)
         self._update_main_button()
 
@@ -257,7 +270,7 @@ class AppIDSelector(ft.FilledTonalButton):
 
     def _on_dialog_select_click(self, e):
         self.page.close(self._dialog)
-        self._set_config_value(self.get_select_game())
+        self.set_config_value(self.get_select_game())
 
         self._update_main_button()
         self._execute_on_app_id_select()

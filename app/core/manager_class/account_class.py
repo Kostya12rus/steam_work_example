@@ -1,20 +1,33 @@
-import re, requests, threading
+import re, json, datetime, requests, threading
 from app.callback import callback_manager, EventName
 
 class Account:
     def __init__(self):
-        self.account_name = None
         self.password = None
         self.steam_id = None
+        self.account_name = None
         self.refresh_token = None
         self.session = requests.Session()
+        self.wallet_currency: int | None = None
+        self.wallet_country: str | None = None
+
+        self.wallet_country
+
         self.__access_token = None
+        self.__wallet_info: dict | None = None
         self.__lock = threading.Lock()
+        self.__last_check_status = None
+        self.__last_check_time = datetime.datetime.min
     def is_alive_session(self, is_callback: bool = True) -> bool:
+        if self.__last_check_status and self.__last_check_time + datetime.timedelta(seconds=30) > datetime.datetime.now():
+            return self.__last_check_status
+        self.__last_check_time = datetime.datetime.now()
+
         req = self.session.get("https://steamcommunity.com")
-        is_success = req.ok and self.account_name.lower() in req.text.lower()
-        if is_callback and not is_success: callback_manager.trigger(EventName.ON_ACCOUNT_SESSION_EXPIRED, self)
-        return is_success
+        self.__last_check_status = req.ok and self.account_name.lower() in req.text.lower()
+        if is_callback and not self.__last_check_status: callback_manager.trigger(EventName.ON_ACCOUNT_SESSION_EXPIRED, self)
+        print(f'is_alive_session: {self.__last_check_status}')
+        return self.__last_check_status
     def get_steam_web_token(self):
         with self.__lock:
             if self.__access_token: return self.__access_token
@@ -31,6 +44,23 @@ class Account:
                     return token
             except:
                 return None
+    def load_wallet_info(self):
+        if self.__wallet_info: return
+        if not self.is_alive_session(): return
+        url = "https://steamcommunity.com/market/"
+        try:
+            response = self.session.get(url, timeout=10)
+            if response.ok:
+                wallet_info_match = re.search(r'var g_rgWalletInfo = ({.*?});', response.text)
+
+                if wallet_info_match:
+                    wallet_info_json = wallet_info_match.group(1)
+                    self.__wallet_info = json.loads(wallet_info_json)
+                    self.wallet_currency = self.__wallet_info.get('wallet_currency', None)
+                    self.wallet_country = self.__wallet_info.get('wallet_country', None)
+                    print(f"Wallet info loaded. Currency: {self.wallet_currency}, Country: {self.wallet_country}")
+        except Exception as e:
+            print(f"Error fetching wallet info: {e}")
 
     def get_save_data(self):
         return {

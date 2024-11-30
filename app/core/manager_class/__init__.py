@@ -1,2 +1,2 @@
 from .account_class import Account
-from .app_class import AppDetails
+from .app_details_class import AppDetails

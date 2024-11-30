@@ -24,14 +24,18 @@ tables_structure = {
             appid           INTEGER UNIQUE,
             app_details     TEXT
         ''',
+    'item_nameid':
+        '''
+            market_hash_name    TEXT UNIQUE,
+            nameid              INTEGER
+        ''',
 }
 
 class SqliteDatabaseManager:
     def __init__(self):
         self.db_name = 'data.db'
-        self.db_connection = sqlite3.connect(self.db_name, check_same_thread=False)
-        self.__db_lock = threading.Lock()
         self._secret_key = None
+        self.__db_lock = threading.Lock()
         self.__create_all_tables()
 
     def __connect(self):
@@ -57,7 +61,6 @@ class SqliteDatabaseManager:
                     save_data = account.get_save_data()
                     account_client = self.encrypt_data(save_data)
                     cursor.execute("INSERT OR REPLACE INTO accounts (login, client) VALUES (?, ?)", (account.account_name, account_client))
-                    self.db_connection.commit()
             except Exception:
                 logger.exception(f"Ошибка при обновлении аккаунта '{account.account_name}'")
     def account_del(self, account: 'Account'):
@@ -67,7 +70,6 @@ class SqliteDatabaseManager:
                 with self.__connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute("DELETE FROM accounts WHERE login=?", (account.account_name,))
-                    self.db_connection.commit()
             except Exception:
                 logger.exception(f"Ошибка при обновлении аккаунта '{account.account_name}'")
     def account_get(self, account_name: str):
@@ -109,7 +111,6 @@ class SqliteDatabaseManager:
                     save_data = app_details.get_save_data()
                     app_details_client = self.encrypt_data(save_data)
                     cursor.execute("INSERT OR REPLACE INTO apps (appid, app_details) VALUES (?, ?)", (app_details.appid, app_details_client))
-                    self.db_connection.commit()
             except Exception:
                 logger.exception(f"Ошибка при обновлении приложения '{app_details.appid}'")
     def appdetails_del(self, app_details: 'AppDetails'):
@@ -120,7 +121,6 @@ class SqliteDatabaseManager:
                 with self.__connect() as conn:
                     cursor = conn.cursor()
                     cursor.execute("DELETE FROM apps WHERE appid=?", (app_details.appid,))
-                    self.db_connection.commit()
             except Exception:
                 logger.exception(f"Ошибка при обновлении приложения '{app_details.appid}'")
     def appdetails_get(self, appid: int):
@@ -152,6 +152,48 @@ class SqliteDatabaseManager:
                 logger.exception(f"Ошибка при получении приложений")
 
 
+    def item_nameid_save(self, appid: int | str, market_hash_name: str, nameid: int | str):
+        if not appid or not market_hash_name or not nameid: return
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("INSERT OR REPLACE INTO item_nameid (market_hash_name, nameid) VALUES (?, ?)", (f'{appid}__{market_hash_name}', nameid))
+            except Exception:
+                logger.exception(f"Ошибка при сохранении item_nameid {appid}__{market_hash_name} {nameid}")
+    def item_nameid_del(self, appid: int | str, market_hash_name: str):
+        if not appid or not market_hash_name: return
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM item_nameid WHERE market_hash_name=?", (f'{appid}__{market_hash_name}',))
+            except Exception:
+                logger.exception(f"Ошибка при удалении item_nameid {appid}__{market_hash_name}")
+    def item_nameid_get(self, appid: int | str, market_hash_name: str):
+        if not appid or not market_hash_name: return
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT nameid FROM item_nameid WHERE market_hash_name=?", (f'{appid}__{market_hash_name}',))
+                    row = cursor.fetchone()
+                    if row:
+                        return row[0]
+                    return None
+            except Exception:
+                logger.exception(f"Ошибка при получении item_nameid {appid}__{market_hash_name}")
+    def item_nameid_all_get(self):
+        with self.__db_lock:
+            try:
+                with self.__connect() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT * FROM item_nameid")
+                    return cursor.fetchall()
+            except Exception:
+                logger.exception(f"Ошибка при получении приложений")
+
+
     def save_setting(self, name: str, value: str | list | dict):
         try:
             with self.__db_lock, self.__connect() as conn:
@@ -159,7 +201,6 @@ class SqliteDatabaseManager:
                     value = json.dumps(value)
                 cursor = conn.cursor()
                 cursor.execute("INSERT OR REPLACE INTO setting (name, value) VALUES (?, ?)", (name, value))
-                self.db_connection.commit()
         except Exception:
             logger.exception(f"Ошибка при обновлении настройки '{name}'")
     def get_setting(self, name: str) -> str | list | None:
