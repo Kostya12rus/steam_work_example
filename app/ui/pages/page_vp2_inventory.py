@@ -251,8 +251,14 @@ class SellAllItemContent(ft.Container):
             for select_item in items_list.items:
                 if select_item.amount <= 0: continue
                 status = steam_api_utility.sell_item(select_item, amount=select_item.amount, price=price_get)
-                logger.info(f"Sell: name={select_item.name}, amount={select_item.amount}, price={price_get}, appid={select_item.appid}, assetid={select_item.assetid}")
+                logger.info(f"Sell initiated: name='{item.name}', "
+                            f"amount={select_item.amount}, "
+                            f"price_sell={self._price_prefix}{price_sell}{self._price_suffix}, "
+                            f"net_price={self._price_prefix}{_price_get}{self._price_suffix}, "
+                            f"steam_price={price_get}, "
+                            f"assetid={select_item.assetid}")
                 if not status or not status.get('success', False): select_item.amount = 0
+                logger.info(f"Sell: {status=}")
 
             succell_amount = items_list.get_amount()
             count_item_sell += selling_amount - succell_amount
@@ -490,7 +496,7 @@ class SellAllItemsDialog(ft.AlertDialog):
         percent_button_row.expand = True
         percent_button_row.alignment = ft.MainAxisAlignment.CENTER
         percent_button_row.vertical_alignment = ft.CrossAxisAlignment.CENTER
-        for percent in [-20, -10, -5, -1, -0.1, 0, 0.1, 1, 5, 10, 20]:
+        for percent in [-20, -15, -10, -5, -1, -0.1, 0, 0.1, 1, 5, 10, 15, 20]:
             button = ft.Radio(value=f"{1 + (percent / 100)}", label=f'{percent}%')
             button.splash_radius = 0
             percent_button_row.controls.append(button)
