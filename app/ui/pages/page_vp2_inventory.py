@@ -5,8 +5,44 @@ from app.core import Account
 from app.database import config
 from app.ui.widgets import AppIDSelector
 from app.ui.pages import BasePage, Title
+from app.logger import logger
 from app.package.data_collectors import SteamAPIUtility, InventoryManager, InventoryItemRgDescriptions, MarketListenItem, ItemOrdersHistogram
 
+
+def create_input_widget():
+    input_widget = ft.TextField()
+    input_widget.height = 30
+    input_widget.dense = True
+    input_widget.expand = True
+    input_widget.max_lines = 1
+    input_widget.text_size = 14
+    input_widget.content_padding = 10
+    input_widget.border_color = ft.colors.BLUE
+    input_widget.text_align = ft.TextAlign.RIGHT
+    input_widget.text_vertical_align = ft.VerticalAlignment.CENTER
+    return input_widget
+def create_button_widget():
+    button = ft.FilledTonalButton()
+    button.height = 30
+    button.style = ft.ButtonStyle()
+    button.style.icon_size = 20
+    button.style.padding = ft.padding.all(5)
+    button.style.alignment = ft.alignment.center
+    button.style.shape = ft.RoundedRectangleBorder()
+    button.style.shape.radius = 5
+    button.style.text_style = ft.TextStyle()
+    button.style.text_style.size = 14
+    return button
+def parce_value(value: str):
+    unified_value = value.replace(',', '.')
+    match = re.search(r'\d+(\.\d{0,3})?', unified_value)
+    if match:
+        try:
+            return float(match.group())
+        except:
+            pass
+    else:
+        return ''
 
 class IntervalEnum(ft.dropdown.Option):
     def __init__(self, text: str = '1 sec', timedelta: datetime.timedelta = datetime.timedelta(seconds=1)):
@@ -50,6 +86,571 @@ class IntervalInventoryUpdate(ft.Dropdown):
         selected_option: IntervalEnum = next((option for option in self.options if option.key == self.value), None)
         return selected_option.timedelta
 
+class SellAllItemContent(ft.Container):
+    def __init__(self):
+        # region ft.Container params
+        super().__init__()
+        self.padding = ft.padding.all(2)
+        self.alignment = ft.alignment.center_left
+        # endregion
+
+        # region Class params
+        self._items_content: list['ItemRowContent'] = []
+        self._histogram: ItemOrdersHistogram | None = None
+        self._on_change_callback: callable = None
+
+        self._price_sell_percent: float = 1.0
+        self._is_minimum_auto_buy: bool = True
+        self._minimum_price: float = 0.03
+        self._price_dont_sell: float = 0.00
+
+        self._count_sell: int = 0
+        self._price_get: float = 0
+        self._price_sell: float = 0
+
+        self._user_price_get: float | None = None
+        self._user_price_sell: float | None = None
+
+        self._histogram_price_buy: float = 0
+        self._histogram_price_sell: float = 0
+
+        self._price_prefix: str = ""
+        self._price_suffix: str = ""
+        # endregion
+
+        # region Image Item
+        self.item_image = ft.Image()
+        self.item_image.width = 30
+        self.item_image.height = 30
+        self.item_image.src = ' '
+        # endregion
+
+        # region Name
+        self.name_text = ft.Text()
+        self.name_text.size = 15
+        self.name_text.width = 200
+        self.name_text.max_lines = 1
+        self.name_text.selectable = True
+        self.name_text.text_align = ft.TextAlign.LEFT
+        self.name_text.overflow = ft.TextOverflow.ELLIPSIS
+        # endregion
+
+        # region Price
+        self.price_sell_input = create_input_widget()
+        self.price_sell_input.label = 'Sell Price'
+        self.price_sell_input.on_change = self.__on_change_sell_price
+
+        self.price_get_input = create_input_widget()
+        self.price_get_input.label = 'Net Price'
+        self.price_get_input.on_change = self.__on_change_get_price
+        # endregion
+
+        # region Count
+        self.count_item_sell_input = create_input_widget()
+        self.count_item_sell_input.value = '1'
+        self.count_item_sell_input.suffix_text = f" | 1"
+        self.count_item_sell_input.label = 'Quantity'
+        self.count_item_sell_input.on_change = self.__on_change_count
+        self.count_item_sell_input.input_filter = ft.NumbersOnlyInputFilter()
+        # endregion
+
+        # region Min Sell Price
+        self.min_sell_price_text = ft.Text()
+        self.min_sell_price_text.size = 15
+        self.min_sell_price_text.value = f""
+        self.min_sell_price_text.width = 150
+        self.min_sell_price_text.max_lines = 1
+        self.min_sell_price_text.text_align = ft.TextAlign.RIGHT
+        # endregion
+
+        # region Auto Buy Price
+        self.auto_buy_price_text = ft.Text()
+        self.auto_buy_price_text.size = 15
+        self.auto_buy_price_text.value = f""
+        self.auto_buy_price_text.width = 150
+        self.auto_buy_price_text.max_lines = 1
+        self.auto_buy_price_text.text_align = ft.TextAlign.RIGHT
+        # endregion
+
+        # region Main Content
+        self.row = ft.Row()
+        self.row.spacing = 2
+        self.row.expand = True
+        self.row.alignment = ft.MainAxisAlignment.START
+        self.row.vertical_alignment = ft.CrossAxisAlignment.CENTER
+        self.row.controls = [
+            self.item_image,
+            self.name_text,
+            self.price_sell_input,
+            self.price_get_input,
+            self.count_item_sell_input,
+            self.min_sell_price_text,
+            self.auto_buy_price_text,
+        ]
+
+        self.content = self.row
+        # endregion
+
+    def init_items(self, items_content: list['ItemRowContent']):
+        self._items_content = items_content
+
+        self.item_image.src = next((item.item.get_icon_url() for item in items_content if item.item), " ")
+        self.name_text.value = next((item.item.name for item in items_content if item.item), None)
+        self.name_text.color = next((item.item.get_color() for item in items_content if item.item), None)
+
+        if not self._count_sell: self.set_sell_amount(self.get_sum_amount())
+
+        if self.page: self.update()
+
+    def init_histogram(self, histogram: ItemOrdersHistogram):
+        if not histogram or not histogram.is_successful(): return False
+        for item in self._items_content: item.update_histogram(histogram)
+        self._histogram = histogram
+
+        self._price_prefix = histogram.price_prefix
+        self._price_suffix = histogram.price_suffix
+
+        self.price_sell_input.prefix_text = histogram.price_prefix
+        self.price_sell_input.suffix_text = f"{histogram.price_suffix} | шт."
+        self.price_get_input.prefix_text = histogram.price_prefix
+        self.price_get_input.suffix_text = f"{histogram.price_suffix} | шт."
+
+        self._histogram_price_sell = histogram.get_lowest_sell_order()
+        self._histogram_price_buy = histogram.get_highest_buy_order()
+
+        self.min_sell_price_text.value = histogram.get_lowest_sell_order_str()
+        self.auto_buy_price_text.value = histogram.get_highest_buy_order_str()
+
+        self.set_price(price_sell=self._histogram_price_sell)
+
+        if self.page: self.update()
+
+    def start_sell(self, steam_api_utility: SteamAPIUtility):
+        if not steam_api_utility: return
+        count_item_sell = self.get_count_sell()
+        if not count_item_sell: return
+
+        price_sell = self.get_price_sell()
+        if not price_sell: return
+        price_dont_sell = self._price_dont_sell
+        if price_sell <= price_dont_sell: return
+
+        _price_get = self.get_price_get()
+        price_get = int(float(_price_get if _price_get else 0) * 100)
+        if not price_get: return
+
+        for item_content in self._items_content:
+            item: InventoryItemRgDescriptions = item_content.item
+            if not item.is_marketable(): continue
+            if item.get_amount() <= 0: continue
+
+            items_list = item.get_amount_items(count_item_sell)
+            selling_amount = items_list.get_amount()
+            count_item_sell -= selling_amount
+
+            for select_item in items_list.items:
+                if select_item.amount <= 0: continue
+                status = steam_api_utility.sell_item(select_item, amount=select_item.amount, price=price_get)
+                logger.info(f"Sell: name={select_item.name}, amount={select_item.amount}, price={price_get}, appid={select_item.appid}, assetid={select_item.assetid}")
+                if not status or not status.get('success', False): select_item.amount = 0
+
+            succell_amount = items_list.get_amount()
+            count_item_sell += selling_amount - succell_amount
+            item.remove_items(items_list)
+            item_content.update_widget()
+
+        self.set_sell_amount(amount=count_item_sell)
+
+    def __on_change_sell_price(self, *args):
+        value = parce_value(self.price_sell_input.value)
+        value = value if value else 0
+        self.set_user_price(price_sell=value)
+    def __on_change_get_price(self, *args):
+        value = parce_value(self.price_get_input.value)
+        value = value if value else 0
+        self.set_user_price(price_get=value)
+    def __on_change_count(self, *args):
+        value = self.count_item_sell_input.value
+        value = int(value) if value else 0
+        self.set_sell_amount(amount=value)
+    def __on_change_content(self, *args):
+        if not self._on_change_callback: return
+        if self.page: self.page.run_thread(self._on_change_callback)
+
+    def set_on_change_callback(self, callback: callable = None):
+        if not callback: return
+        self._on_change_callback = callback
+    def set_user_price(self, price_sell: float = None, price_get: float = None):
+        self._user_price_get = None
+        self._user_price_sell = None
+
+        if price_sell == 0 or price_get == 0:
+            self._user_price_get = 0
+            self._user_price_sell = 0
+            self.update_price_content(price_sell=0, price_get=0)
+            return
+
+        if price_sell:
+            self._user_price_sell = price_sell
+            self._user_price_get = self._calculate_price_sell(price_sell)
+            self.price_get_input.value = f'{round(self._user_price_get, 2):.2f}'
+            if self.price_get_input.page: self.price_get_input.update()
+        if price_get:
+            self._user_price_sell = self._calculate_price_buy(price_get)
+            self._user_price_get = price_get
+            self.price_sell_input.value = f'{round(self._user_price_sell, 2):.2f}'
+            if self.price_sell_input.page: self.price_sell_input.update()
+        self.__on_change_content()
+    def set_sell_amount(self, amount: int = None):
+        amount = amount if amount and amount > 0 else 0
+        total_amount = self.get_sum_amount()
+        if amount > total_amount: amount = total_amount
+
+        self._count_sell = amount
+        self.count_item_sell_input.value = self._count_sell if isinstance(self._count_sell, int) else 0
+        self.count_item_sell_input.suffix_text = f" | {total_amount}"
+        if self.count_item_sell_input.page: self.count_item_sell_input.update()
+        self.__on_change_content()
+    def set_price(self, price_sell: float = None, price_get: float = None):
+        if price_sell is None and price_get is None:
+            self._price_get = None
+            self._price_sell = None
+            return
+        if price_sell == 0 or price_get == 0:
+            self._price_get = 0
+            self._price_sell = 0
+            if self._user_price_get is None or self._user_price_sell is None:
+                self.update_price_content(price_sell=0, price_get=0)
+            return
+
+        if price_sell:
+            price_sell *= self._price_sell_percent
+            if self._is_minimum_auto_buy and self._histogram_price_buy:
+                max_price_sell = max(price_sell, self._histogram_price_buy)
+                if max_price_sell != price_sell:
+                    price_sell = max_price_sell
+            if price_sell < self._minimum_price:
+                price_sell = self._minimum_price
+            self._price_sell = price_sell
+            self._price_get = self._calculate_price_sell(price_sell)
+            if self._price_sell <= self._price_dont_sell:
+                self._price_get = 0
+                self._price_sell = 0
+
+        if price_get:
+            self._price_sell = self._calculate_price_buy(price_get)
+            self._price_get = price_get
+            if self._is_minimum_auto_buy and self._histogram_price_buy:
+                max_price_sell = max(self._price_sell, self._histogram_price_buy)
+                if max_price_sell != self._price_sell:
+                    self.set_price(price_sell=max_price_sell)
+                    return
+            if self._price_sell < self._minimum_price:
+                self.set_price(price_sell=self._minimum_price)
+                return
+            if self._price_sell <= self._price_dont_sell:
+                self._price_get = 0
+                self._price_sell = 0
+
+        if self._user_price_get is not None or self._user_price_sell is not None: return
+        self.update_price_content(price_sell=self._price_sell, price_get=self._price_get)
+
+    def update_price_content(self, price_sell: float = None, price_get: float = None):
+        price_sell = price_sell if price_sell else 0
+        price_get = price_get if price_get else 0
+
+        self.price_get_input.value = f'{round(price_get, 2):.2f}'
+        if self.price_get_input.page: self.price_get_input.update()
+        self.price_sell_input.value = f'{round(price_sell, 2):.2f}'
+        if self.price_sell_input.page: self.price_sell_input.update()
+
+        self.__on_change_content()
+
+    def set_percent(self, percent: float = None):
+        if not percent: return
+        self._price_sell_percent = percent
+        if not self._histogram_price_sell: return
+        self.set_price(price_sell=self._histogram_price_sell)
+    def set_is_minimum_auto_buy(self, is_minimum_auto_buy: bool = True):
+        self._is_minimum_auto_buy = is_minimum_auto_buy if is_minimum_auto_buy is not None else True
+        if not self._is_minimum_auto_buy: return
+        if self._user_price_get is not None or self._user_price_sell is not None: return
+        price_now = self.get_price_sell()
+        if price_now >= self._histogram_price_buy: return
+        self.set_price(price_sell=self._histogram_price_buy)
+    def set_minimum_price(self, minimum_price: float = None):
+        self._minimum_price = minimum_price if minimum_price is not None else 0.03
+        if self._user_price_get is not None or self._user_price_sell is not None: return
+        price_now = self.get_price_sell()
+        if price_now >= self._minimum_price: return
+        self.set_price(price_sell=self._minimum_price)
+    def set_price_dont_sell(self, price_dont_sell: float = None):
+        self._price_dont_sell = price_dont_sell if price_dont_sell is not None else 0
+        price_now = self.get_price_sell()
+        if price_now >= self._price_dont_sell: return
+        self.set_price(price_sell=0)
+
+    @staticmethod
+    def _calculate_price_buy(price_get: float = None):
+        """
+        Посчитать сколько заплатить покупатель
+        :param price_get:
+        :return:
+        """
+        if price_get is None: return None
+        if price_get < 0.01: return 0
+        min_commission = 0.02
+
+        price_sell = price_get / 100 * 115
+        if price_sell - price_get < min_commission:
+            price_sell = price_get + min_commission
+        if price_sell < 0.03:
+            price_sell = 0.03
+        return price_sell
+    @staticmethod
+    def _calculate_price_sell(price_sell: float = None):
+        """
+        Посчитать сколько получит продавец
+        :param price_sell:
+        :return:
+        """
+        if price_sell is None: return None
+        if price_sell < 0.03: return 0
+        min_commission = 0.02
+
+        price_get = price_sell / 115 * 100
+        if price_sell - price_get < min_commission:
+            price_get = price_sell - min_commission
+        if price_get < 0.01:
+            price_get = 0.01
+        return price_get
+
+
+    def get_price_sell(self) -> float:
+        if not self._count_sell: return 0
+        if self._user_price_sell is not None: return round(self._user_price_sell, 2)
+        return round(self._price_sell, 2) if self._price_sell else 0
+    def get_price_get(self) -> float:
+        if not self._count_sell: return 0.0
+        if self._user_price_get is not None: return round(self._user_price_get, 2)
+        return round(self._price_get, 2) if self._price_get else 0
+    def get_count_sell(self) -> int:
+        return int(self._count_sell) if self._count_sell else 0
+    def get_all_price_sell(self) -> float:
+        return self.get_price_sell() * self.get_count_sell()
+    def get_all_price_get(self) -> float:
+        return self.get_price_get() * self.get_count_sell()
+
+    def get_prefix_text(self) -> str:
+        return self._price_prefix
+    def get_suffix_text(self) -> str:
+        return self._price_suffix
+
+    def get_sum_amount(self):
+        return sum(item.item.get_amount() for item in self._items_content if item.item and item.item.is_marketable())
+    def get_appid(self):
+        return next((item.item.appid for item in self._items_content if item.item), None)
+    def get_market_hash_name(self):
+        return next((item.item.market_hash_name for item in self._items_content if item.item), None)
+class SellAllItemsDialog(ft.AlertDialog):
+    def __init__(self):
+        super().__init__()
+        # region ft.AlertDialog params
+        self.isolated = True
+        self.expand = True
+        # endregion
+
+        # region Class params
+        self._steam_api_utility: SteamAPIUtility | None = None
+        self._items_content: list['ItemRowContent'] | None = None
+        # endregion Class params
+
+        # region Title
+        self.title_name_text = ft.Text()
+        self.title_name_text.size = 29
+        self.title_name_text.max_lines = 1
+        self.title_name_text.value = 'Sell All Items'
+        self.title_name_text.weight = ft.FontWeight.BOLD
+        self.title_name_text.text_align = ft.TextAlign.CENTER
+        self.title_name_text.overflow = ft.TextOverflow.ELLIPSIS
+
+        self.title = self.title_name_text
+        # endregion
+
+        # region Items Column Content
+        self._items_column = ft.ListView()
+        self._items_column.spacing = 2
+        self._items_column.expand = True
+        self._items_column.padding = ft.padding.all(2)
+        self._items_column.controls = []
+        # endregion
+
+        # region Top Bar Content
+        percent_button_row = ft.Row()
+        percent_button_row.expand = True
+        percent_button_row.alignment = ft.MainAxisAlignment.CENTER
+        percent_button_row.vertical_alignment = ft.CrossAxisAlignment.CENTER
+        for percent in [-20, -10, -5, -1, -0.1, 0, 0.1, 1, 5, 10, 20]:
+            button = ft.Radio(value=f"{1 + (percent / 100)}", label=f'{percent}%')
+            button.splash_radius = 0
+            percent_button_row.controls.append(button)
+        self._percent_radio_group = ft.RadioGroup(content=percent_button_row, value="1.0")
+        self._percent_radio_group.on_change = self._on_change_percent_radio_group
+
+        self._is_minimun_auto_buy = ft.Checkbox(label='Auto-buy at min price', value=True)
+        self._is_minimun_auto_buy.on_change = self._on_change_minimun_auto_buy
+
+        self._minimun_price = create_input_widget()
+        self._minimun_price.label = 'Min sell price threshold'
+        self._minimun_price.value = '0.03'
+        self._minimun_price.suffix_text = f" | шт."
+        self._minimun_price.on_change = self._on_change_minimun_price
+
+        self._minimun_price_dont_sell = create_input_widget()
+        self._minimun_price_dont_sell.label = 'Do not sell below this price'
+        self._minimun_price_dont_sell.value = '0.00'
+        self._minimun_price_dont_sell.suffix_text = f" | шт."
+        self._minimun_price_dont_sell.on_change = self._on_change_minimun_price_dont_sell
+
+
+        row_sell_settings = ft.Row()
+        row_sell_settings.expand = True
+        row_sell_settings.alignment = ft.MainAxisAlignment.CENTER
+        row_sell_settings.vertical_alignment = ft.CrossAxisAlignment.CENTER
+        row_sell_settings.controls = [
+            self._is_minimun_auto_buy,
+            self._minimun_price,
+            self._minimun_price_dont_sell,
+        ]
+
+
+        self._top_bar = ft.Column()
+        self._top_bar.alignment = ft.MainAxisAlignment.START
+        self._top_bar.horizontal_alignment = ft.MainAxisAlignment.CENTER
+        self._top_bar.controls = [
+            self._percent_radio_group,
+            row_sell_settings,
+        ]
+        # endregion
+
+        # region Bottom Bar Content
+        self._button_start_sell = create_button_widget()
+        self._button_start_sell.text = 'Start Sell'
+        self._button_start_sell.expand = True
+        self._button_start_sell.on_click = self._on_click_start_sell
+
+        self.actions_alignment = ft.MainAxisAlignment.CENTER,
+        self.actions = [
+            ft.Row(expand=True, controls=[self._button_start_sell])
+        ]
+        # endregion
+
+        # region Main Content
+        self.content = ft.Column()
+        self.content.width = 1000
+        self.content.expand = True
+        self.content.alignment = ft.MainAxisAlignment.START
+        self.content.vertical_alignment = ft.CrossAxisAlignment.START
+        self.content.controls = [
+            self._top_bar,
+            self._items_column,
+        ]
+        # endregion
+
+    def init(self, steam_api_utility: SteamAPIUtility, items_content: list['ItemRowContent']):
+        self._steam_api_utility = steam_api_utility
+        self._items_content = items_content
+
+        market_hash_names = set(item.item.market_hash_name for item in items_content if item.item and item.item.is_marketable())
+        ready_items = [item for item in items_content if item.item and item.item.is_marketable()]
+        for market_hash_name in market_hash_names:
+            items = [item for item in ready_items if item.item.market_hash_name == market_hash_name]
+            if not items: continue
+
+            item_control = SellAllItemContent()
+            item_control.init_items(items)
+            item_control.set_on_change_callback(self._on_change_content)
+            self._items_column.controls.append(item_control)
+        self._items_column.controls.sort(key=lambda x: x.get_sum_amount(), reverse=True)
+
+        self.title_name_text.value = f'Sell {self._get_sum_amount()} Items'
+
+        if self.page: self.update()
+
+    def _get_sum_amount(self):
+        return sum(item.item.get_amount() for item in self._items_content if item.item and item.item.is_marketable())
+
+    def start_update_histogram(self):
+        try:
+            self._button_start_sell.disabled = True
+            if self._button_start_sell.page: self._button_start_sell.update()
+
+            for item_control in self._items_column.controls:
+                item_control: SellAllItemContent
+                if not self.open: continue
+                item_amount = item_control.get_sum_amount()
+                if not item_amount: continue
+                appid = item_control.get_appid()
+                market_hash_name = item_control.get_market_hash_name()
+                histogram = self._steam_api_utility.fetch_market_itemordershistogram(appid=appid, market_hash_name=market_hash_name)
+                item_control.init_histogram(histogram)
+        finally:
+            self._button_start_sell.disabled = False
+            if self._button_start_sell.page: self._button_start_sell.update()
+
+    def _on_click_start_sell(self, *args):
+        for item_control in self._items_column.controls:
+            item_control: SellAllItemContent
+            item_control.start_sell(self._steam_api_utility)
+    def _on_change_percent_radio_group(self, *args):
+        value = parce_value(self._percent_radio_group.value)
+        value = value if value else 1.0
+        for item_control in self._items_column.controls:
+            item_control: SellAllItemContent
+            item_control.set_percent(percent=value)
+    def _on_change_minimun_auto_buy(self, *args):
+        value = self._is_minimun_auto_buy.value
+        for item_control in self._items_column.controls:
+            item_control: SellAllItemContent
+            item_control.set_is_minimum_auto_buy(is_minimum_auto_buy=value)
+    def _on_change_minimun_price(self, *args):
+        value = parce_value(self._minimun_price.value)
+        value = value if value else 0.03
+        for item_control in self._items_column.controls:
+            item_control: SellAllItemContent
+            item_control.set_minimum_price(minimum_price=value)
+    def _on_change_minimun_price_dont_sell(self, *args):
+        value = parce_value(self._minimun_price_dont_sell.value)
+        value = value if value else 0.00
+        for item_control in self._items_column.controls:
+            item_control: SellAllItemContent
+            item_control.set_price_dont_sell(price_dont_sell=value)
+
+    def _on_change_content(self, *args):
+        items_content: list['SellAllItemContent' | 'ft.Control'] = self._items_column.controls
+        total_price_get = f'{round(sum(item.get_all_price_get() for item in items_content), 2):.2f}'
+        total_price_sell = f'{round(sum(item.get_all_price_sell() for item in items_content), 2):.2f}'
+        total_count_sell = sum(item.get_count_sell() for item in items_content)
+
+        self._button_start_sell.disabled = bool(not total_count_sell)
+
+        prefix = next((item.get_prefix_text() for item in items_content if item.get_prefix_text()), "")
+        suffix = next((item.get_suffix_text() for item in items_content if item.get_suffix_text()), "")
+
+        price_text = f"{prefix}{total_price_sell}{suffix}({prefix}{total_price_get}{suffix})"
+        self._button_start_sell.text = f"Start Sell {total_count_sell} Items {price_text}"
+
+        self._minimun_price.prefix_text = prefix
+        self._minimun_price.suffix_text = f"{suffix} | шт."
+
+        self._minimun_price_dont_sell.prefix_text = prefix
+        self._minimun_price_dont_sell.suffix_text = f"{suffix} | шт."
+
+        if self._button_start_sell.page: self._button_start_sell.update()
+
+    def did_mount(self):
+        self.start_update_histogram()
+
 
 class SellItemDialog(ft.AlertDialog):
     def __init__(self):
@@ -64,7 +665,7 @@ class SellItemDialog(ft.AlertDialog):
         self._steam_api_utility: SteamAPIUtility | None = None
         self._items_content: list['ItemRowContent'] | None = None
         self._histogram: ItemOrdersHistogram | None = None
-        
+
         self._count_sell: int = 1
         self._price_get: float | None = None
         self._price_sell: float | None = None
@@ -111,17 +712,19 @@ class SellItemDialog(ft.AlertDialog):
         # region Item Info Content
         price_button_row = ft.Row()
         for percent in [-20, -10, -5, -1, 1, 5, 10, 20]:
-            button = self.__create_button_widget()
+            button = create_button_widget()
             button.expand = True
             button.text = f'{percent}%'
             button.on_click = lambda e, _percent=percent: self._set_price_get_percent(1 + (_percent / 100))
             price_button_row.controls.append(button)
 
-        self.price_sell_input = self.__create_input_widget()
-        self.price_sell_input.label = 'Покупатель заплатит'
+        self.price_sell_input = create_input_widget()
+        self.price_sell_input.label = 'Sell Price'
+        self.price_sell_input.suffix_text = f" | шт."
         self.price_sell_input.on_change = self.__on_change_sell_price
-        self.price_get_input = self.__create_input_widget()
-        self.price_get_input.label = 'Вы получите'
+        self.price_get_input = create_input_widget()
+        self.price_get_input.label = 'Net Price'
+        self.price_get_input.suffix_text = f" | шт."
         self.price_get_input.on_change = self.__on_change_get_price
         price_input_row = ft.Row()
         price_input_row.controls = [
@@ -129,23 +732,23 @@ class SellItemDialog(ft.AlertDialog):
             self.price_get_input
         ]
 
-        self.count_item_sell_input = self.__create_input_widget()
-        self.count_item_sell_input.label = 'Количество к продаже'
+        self.count_item_sell_input = create_input_widget()
+        self.count_item_sell_input.label = 'Quantity'
         self.count_item_sell_input.value = '1'
         self.count_item_sell_input.input_filter = ft.NumbersOnlyInputFilter()
         self.count_item_sell_input.suffix_text = f" | 1"
         self.count_item_sell_input.on_change = self.__on_change_count
 
-        self.count_item_sell_one = self.__create_button_widget()
+        self.count_item_sell_one = create_button_widget()
         self.count_item_sell_one.text = '1 шт.'
         self.count_item_sell_one.on_click = lambda e: self._set_sell_count(count=1)
 
-        self.count_item_sell_center = self.__create_button_widget()
+        self.count_item_sell_center = create_button_widget()
         self.count_item_sell_center.text = '50%'
         self.count_item_sell_center.on_click = lambda e: self._set_sell_count(percent=0.5)
 
-        self.count_item_sell_all = self.__create_button_widget()
-        self.count_item_sell_all.text = 'Все'
+        self.count_item_sell_all = create_button_widget()
+        self.count_item_sell_all.text = 'All'
         self.count_item_sell_all.on_click = lambda e: self._set_sell_count(percent=1)
 
         count_input_row = ft.Row()
@@ -156,20 +759,20 @@ class SellItemDialog(ft.AlertDialog):
             self.count_item_sell_all
         ]
 
-        self.total_price_sell_input = self.__create_input_widget()
+        self.total_price_sell_input = create_input_widget()
         self.total_price_sell_input.disabled = True
-        self.total_price_sell_input.label = 'Всего покупатель заплатит'
-        self.total_price_get_input = self.__create_input_widget()
+        self.total_price_sell_input.label = 'Total Sell Price'
+        self.total_price_get_input = create_input_widget()
         self.total_price_get_input.disabled = True
-        self.total_price_get_input.label = 'Всего вы получите'
+        self.total_price_get_input.label = 'Total Net Price'
         total_price_input_row = ft.Row()
         total_price_input_row.controls = [
             self.total_price_sell_input,
             self.total_price_get_input
         ]
 
-        self.button_start_sell = self.__create_button_widget()
-        self.button_start_sell.text = 'Продать'
+        self.button_start_sell = create_button_widget()
+        self.button_start_sell.text = "Start Sell"
         self.button_start_sell.expand = True
         self.button_start_sell.on_click = self._on_click_start_sell
         button_start_sell_row = ft.Row()
@@ -240,9 +843,9 @@ class SellItemDialog(ft.AlertDialog):
         self._histogram = histogram
 
         self.price_sell_input.prefix_text = histogram.price_prefix
-        self.price_sell_input.suffix_text = histogram.price_suffix
+        self.price_sell_input.suffix_text = f"{histogram.price_suffix} | шт."
         self.price_get_input.prefix_text = histogram.price_prefix
-        self.price_get_input.suffix_text = histogram.price_suffix
+        self.price_get_input.suffix_text = f"{histogram.price_suffix} | шт."
 
         self.total_price_sell_input.prefix_text = histogram.price_prefix
         self.total_price_sell_input.suffix_text = histogram.price_suffix
@@ -292,7 +895,7 @@ class SellItemDialog(ft.AlertDialog):
                     select_item.amount = 0
                     continue
                 status = self._steam_api_utility.sell_item(select_item, amount=select_item.amount, price=price_get)
-                if not status.get('success', False): select_item.amount = 0
+                if not status or not status.get('success', False): select_item.amount = 0
                 self._add_log(status)
             succell_amount = items_list.get_amount()
             count_item_sell += selling_amount - succell_amount
@@ -353,10 +956,10 @@ class SellItemDialog(ft.AlertDialog):
     def __on_change_count(self, *args):
         self._set_sell_count(int(self.count_item_sell_input.value))
     def __on_change_get_price(self, *args):
-        price_get_input_new = self.__parce_value(self.price_get_input.value)
+        price_get_input_new = parce_value(self.price_get_input.value)
         self._set_price_get(price_get_input_new)
     def __on_change_sell_price(self, *args):
-        price_sell_input_new = self.__parce_value(self.price_sell_input.value)
+        price_sell_input_new = parce_value(self.price_sell_input.value)
         self._set_price_sell(price_sell_input_new)
 
     def _set_multiply_info(self, price_get: float = None, price_sell: float = None, count_sell: int = None):
@@ -442,9 +1045,14 @@ class SellItemDialog(ft.AlertDialog):
         self.total_price_get_input.value = f'{round(price_get * self._count_sell, 2):.2f}'
         if self.total_price_get_input.page: self.total_price_get_input.update()
 
-        self.button_start_sell.text = f"Продать {self._count_sell}"
+        self.button_start_sell.text = f"Start Sell {self._count_sell}"
         if self._histogram:
-            self.button_start_sell.text = f'Продать {self._count_sell} за {self._histogram.price_prefix}{round(price_get * self._count_sell, 2)} {self._histogram.price_suffix}'
+            prefix = self._histogram.price_prefix
+            suffix = self._histogram.price_suffix
+            total_price_get = f'{round(price_get * self._count_sell, 2):.2f}'
+            total_price_sell = f'{round(price_sell * self._count_sell, 2):.2f}'
+            price_text = f"{prefix}{total_price_sell}{suffix}({prefix}{total_price_get}{suffix})"
+            self.button_start_sell.text = f"Start Sell {self._count_sell} Items {price_text}"
         self.button_start_sell.disabled = bool(not price_get or not price_sell or not self._count_sell)
         if self.button_start_sell.page: self.button_start_sell.update()
 
@@ -455,47 +1063,9 @@ class SellItemDialog(ft.AlertDialog):
 
 
     @staticmethod
-    def __parce_value(value: str):
-        unified_value = value.replace(',', '.')
-        match = re.search(r'\d+(\.\d{0,2})?', unified_value)
-        if match:
-            try:
-                return float(match.group())
-            except:
-                pass
-        else:
-            return ''
-    @staticmethod
     def __parce_html_text(html_content: str):
         content_with_newlines = re.sub(r'<br\s*/?>', '\n', html_content)
         return re.sub(r'<[^>]+>', '', content_with_newlines)
-
-    @staticmethod
-    def __create_input_widget():
-        input_widget = ft.TextField()
-        input_widget.height = 30
-        input_widget.dense = True
-        input_widget.expand = True
-        input_widget.max_lines = 1
-        input_widget.text_size = 14
-        input_widget.content_padding = 10
-        input_widget.border_color = ft.colors.BLUE
-        input_widget.text_align = ft.TextAlign.RIGHT
-        input_widget.text_vertical_align = ft.VerticalAlignment.CENTER
-        return input_widget
-    @staticmethod
-    def __create_button_widget():
-        button = ft.FilledTonalButton()
-        button.height = 30
-        button.style = ft.ButtonStyle()
-        button.style.icon_size = 20
-        button.style.padding = ft.padding.all(5)
-        button.style.alignment = ft.alignment.center
-        button.style.shape = ft.RoundedRectangleBorder()
-        button.style.shape.radius = 5
-        button.style.text_style = ft.TextStyle()
-        button.style.text_style.size = 14
-        return button
 
 
 class ItemRowContent(ft.Container):
@@ -503,11 +1073,13 @@ class ItemRowContent(ft.Container):
         # region ft.Container params
         super().__init__()
         self.ink = True
-        self.border = ft.border.all(1)
         self.padding = ft.padding.all(2)
         self.on_click = lambda *args: None
         self.alignment = ft.alignment.center_left
-        self.border_radius = ft.border_radius.all(5)
+        # self.border = ft.border.all(1)
+        # self.border_radius = ft.border_radius.all(5)
+        self.border_radius = ft.border_radius.all(0)
+        self.border = ft.border.only(top=ft.BorderSide(1))
         # endregion
 
         # region Class params
@@ -879,15 +1451,17 @@ class InventoryPageContent(ft.Column):
         self.bottom_load_individual_price_button.icon = ft.icons.DOWNLOAD
         self.bottom_load_individual_price_button.icon_color = ft.colors.GREEN
         self.bottom_load_individual_price_button.expand = True
+        self.bottom_load_individual_price_button.disabled = True
         self.bottom_load_individual_price_button.style = style
         self.bottom_load_individual_price_button.on_click = self._on_click_load_individual_price
 
         self.bottom_sell_all_items_button = ft.FilledTonalButton()
-        self.bottom_sell_all_items_button.text = 'Sell all items (Coming soon)'
+        self.bottom_sell_all_items_button.text = 'Sell all items'
         self.bottom_sell_all_items_button.icon = ft.icons.SELL
         self.bottom_sell_all_items_button.expand = True
+        self.bottom_sell_all_items_button.disabled = True
         self.bottom_sell_all_items_button.style = style
-        # self.bottom_sell_all_items_button.on_click = self._on_click_sort
+        self.bottom_sell_all_items_button.on_click = self._on_click_sell_all_items
 
         self.botton_row = ft.Row()
         self.botton_row.spacing = 2
@@ -933,6 +1507,8 @@ class InventoryPageContent(ft.Column):
     def _on_select_app_id(self, app_id: str):
         try:
             self.app_id_selector.update_button(disabled=True, icon=ft.icons.UPDATE, icon_color=ft.colors.BLUE, text='Loading...')
+            self._items_column.controls = []
+            if self._items_column.page: self._items_column.update()
 
             if not app_id: return
             self.__last_inventory = self._steam_api_utility.get_inventory_items(appid=app_id)
@@ -940,6 +1516,11 @@ class InventoryPageContent(ft.Column):
             inventory = self.__last_inventory.inventory if self.__last_inventory else []
             market_listing = self._steam_api_utility.get_market_listings(appid=app_id)
             market_listing_kv = {str(item.asset_description.classid): item for item in market_listing}
+
+            self.bottom_sell_all_items_button.disabled = len(inventory) <= 0
+            if self.bottom_sell_all_items_button.page: self.bottom_sell_all_items_button.update()
+            self.bottom_load_individual_price_button.disabled = len(inventory) <= 0
+            if self.bottom_load_individual_price_button.page: self.bottom_load_individual_price_button.update()
 
             app_inventory = self.__items_content.get(str(app_id), {})
 
@@ -1043,6 +1624,12 @@ class InventoryPageContent(ft.Column):
             self.bottom_load_individual_price_button.icon_color = ft.colors.GREEN
             self.__update_button_text(self.bottom_load_individual_price_button, 'Load Individual Prices')
 
+
+    def _on_click_sell_all_items(self, *args):
+        sell_all_dialog = SellAllItemsDialog()
+        sell_all_dialog.init(steam_api_utility=self._steam_api_utility, items_content=self._items_column.controls)
+
+        if self.page: self.page.open(sell_all_dialog)
 
     def _on_click_sell_item(self, item_content: ItemRowContent):
         if not item_content: return

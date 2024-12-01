@@ -4,7 +4,7 @@ import flet as ft
 from app.ui.main_page import MainPage
 
 def main():
-    main_page = MainPage('Steam Trader')
+    main_page = MainPage('Steam Inventory Helper')
     ft.app(main_page.build)
     os.abort()
 
