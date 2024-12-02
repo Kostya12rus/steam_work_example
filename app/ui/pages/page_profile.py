@@ -290,11 +290,10 @@ class ProfilePage(BasePage):
     def __init__(self):
         super().__init__()
         self.name = 'profile'
-        self.label = 'Профиль'
-        self.icon = ft.icons.PERSON_OUTLINED
-        self.selected_icon = ft.icons.PERSON
+        self.label = 'Profile'
+        self.icon = ft.icons.ACCOUNT_CIRCLE_OUTLINED
+        self.selected_icon = ft.icons.ACCOUNT_CIRCLE
 
-        self.disabled = True
         self.disabled_is_logout = True
 
         self.page_content = ProfileContent()

@@ -16,18 +16,24 @@ class ExamplePageContent(ft.Column):
         self.app_id_selector.use_config = True
         self.app_id_selector.on_app_id_select = lambda selected_app_id: print(selected_app_id)
 
+        app_id_container = ft.Container()
+        app_id_container.expand = True
+        app_id_container.content = self.app_id_selector
+        app_id_container.alignment = ft.alignment.center
+
         self.controls = [
             self.title,
-            self.app_id_selector,
+            app_id_container
         ]
 
 class ExamplePage(BasePage):
+    load_position = 99
     def __init__(self):
         super().__init__()
         self.name = 'example'
         self.label = 'Example'
-        self.icon = ft.icons.PAYMENT
-        self.selected_icon = ft.icons.PAYMENT_ROUNDED
+        self.icon = ft.icons.LIGHTBULB_OUTLINE
+        self.selected_icon = ft.icons.LIGHTBULB
 
         self.disabled = False           # разрешить пользователю нажимать на виджет
         self.not_disabled = True        # блокировка виджета при входе и выходе аккаунта
@@ -41,6 +47,8 @@ class ExamplePage(BasePage):
     def on_callback_qr_code_timeout(self):
         ...
     def on_callback_authenticated(self, account: Account):
+        ...
+    def on_callback_logout(self):
         ...
     def on_callback_authenticated_error(self, error_str: str):
         ...

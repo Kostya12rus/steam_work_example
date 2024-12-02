@@ -845,13 +845,13 @@ class TradePageContent(ft.Column):
 
 
 class TradePage(BasePage):
-    load_position = 3
+    load_position = 2
     def __init__(self):
         super().__init__()
         self.name = 'trade'
         self.label = 'Trade'
-        self.icon = ft.icons.CURRENCY_EXCHANGE
-        self.selected_icon = ft.icons.CURRENCY_EXCHANGE
+        self.icon = ft.icons.SWAP_VERTICAL_CIRCLE_OUTLINED
+        self.selected_icon = ft.icons.SWAP_VERTICAL_CIRCLE
 
         self.disabled = True
         self.disabled_is_logout = True

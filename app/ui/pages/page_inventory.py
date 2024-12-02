@@ -1675,7 +1675,7 @@ class InventoryPageContent(ft.Column):
 
 
 class InventoryPage(BasePage):
-    load_position = 2
+    load_position = 3
     def __init__(self):
         super().__init__()
         self.name = 'inventory'

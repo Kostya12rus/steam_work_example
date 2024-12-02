@@ -9,7 +9,7 @@ class Login(ft.Row):
         super().__init__()
         self.expand = True
 
-        self.title_login_password = Title('Login with password')
+        self.title_login_password = Title('Login Steam with password')
 
         self.login_input = ft.TextField(dense=True, content_padding=10, max_lines=2, multiline=False)
         self.login_input.label = 'Login'
@@ -40,7 +40,7 @@ class Login(ft.Row):
         ]
 
 
-        self.qr_code_title = Title('Login with QR code')
+        self.qr_code_title = Title('Login Steam with QR code')
         self.qr_code_button = ft.FilledTonalButton(height=30, width=200)
         self.qr_code_button.text = 'Get QR code'
         self.qr_code_button.icon = ft.icons.QR_CODE_2_OUTLINED
@@ -166,9 +166,9 @@ class LoginPage(BasePage):
     def __init__(self):
         super().__init__()
         self.name = 'login'
-        self.label = 'Авторизация'
-        self.icon = ft.icons.PERSON_ADD_ALT
-        self.selected_icon = ft.icons.PERSON_ADD_ALT_ROUNDED
+        self.label = 'Login'
+        self.icon = ft.icons.LOGIN_OUTLINED
+        self.selected_icon = ft.icons.LOGIN
 
         self.disabled_is_login = True
 

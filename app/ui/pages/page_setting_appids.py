@@ -209,8 +209,8 @@ class AppIDsPage(BasePage):
         super().__init__()
         self.name = 'app_ids'
         self.label = 'App IDs'
-        self.icon = ft.icons.APPS_OUTAGE
-        self.selected_icon = ft.icons.APPS_OUTAGE_ROUNDED
+        self.icon = ft.icons.LIBRARY_ADD_OUTLINED
+        self.selected_icon = ft.icons.LIBRARY_ADD
 
         self.visible = False
 
