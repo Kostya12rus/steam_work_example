@@ -15,23 +15,6 @@ class SteamAPIUtility:
         self.account = account
         self.session_id: str | None = None
 
-    def fetch_session_id(self):
-        if self.session_id: return self.session_id
-        if not self.account or not self.account.is_alive_session(): return
-        url = "https://steamcommunity.com/market/"
-        try:
-            response = self.account.session.get(url, timeout=10)
-            if response.ok:
-                match = re.search(r'g_sessionID\s*=\s*"([^"]+)"', response.text)
-                if match:
-                    self.session_id = match.group(1)
-                    return self.session_id
-            return None
-        except Exception as e:
-            print(f"Error fetching session ID: {e}")
-            return None
-
-
     def create_trade_offer(self, partner_steam32id: str, partner_token: str, items: dict = None, tradeoffermessage: str = ''):
         if not self.account or not self.account.is_alive_session(): return
         if not partner_steam32id: return False
@@ -70,6 +53,30 @@ class SteamAPIUtility:
             return
 
 
+    def fetch_session_id(self):
+        if self.session_id: return self.session_id
+        if not self.account or not self.account.is_alive_session(): return
+        url = "https://steamcommunity.com/market/"
+        try:
+            response = self.account.session.get(url, timeout=10)
+            if response.ok:
+                match = re.search(r'g_sessionID\s*=\s*"([^"]+)"', response.text)
+                if match:
+                    self.session_id = match.group(1)
+                    return self.session_id
+            return None
+        except Exception as e:
+            print(f"Error fetching session ID: {e}")
+            return None
+
+    def fetch_market_priceoverview(self, market_hash_name: str, appid: int = 3017120, currency: int = 37) -> dict | None:
+        if not self.account or not self.account.is_alive_session(): return
+        url = f"https://steamcommunity.com/market/priceoverview/"
+        params = {'country': 'RU', 'appid': appid, 'currency': currency, 'market_hash_name': market_hash_name}
+        market_info = self.account.session.get(f"{url}?{urllib.parse.urlencode(params)}", timeout=10)
+        return market_info.json() if market_info.ok else None
+
+
     def get_inventory_items(self, steam_id: str | int = None, appid=3017120, start=0, context_id=2):
         if not self.account or not self.account.is_alive_session(): return
         if not steam_id: steam_id = self.account.steam_id
@@ -78,8 +85,7 @@ class SteamAPIUtility:
         else:
             return self.__get_partnerinventory_items(steam_id=steam_id, appid=appid, start=start, context_id=context_id)
     def __get_myinventory_items(self, steam_id: str | int, appid=3017120, start=0, context_id=2):
-        # def_url = f'https://steamcommunity.com/profiles/{steam_id}/inventory/json/{appid}/{context_id}/?start={start}'
-        def_url = f'https://steamcommunity.com/inventory/{steam_id}/{appid}/{context_id}?count=2000'
+        def_url = f'https://steamcommunity.com/inventory/{steam_id}/{appid}/{context_id}?count=5000'
         if start:
             def_url += f'&start_assetid={start}'
         try:
@@ -200,13 +206,6 @@ class SteamAPIUtility:
         except Exception as e:
             print(f"Error fetching market item ID: {e}")
             return None
-
-    def fetch_market_priceoverview(self, market_hash_name: str, appid: int = 3017120, currency: int = 37) -> dict | None:
-        if not self.account or not self.account.is_alive_session(): return
-        url = f"https://steamcommunity.com/market/priceoverview/"
-        params = {'country': 'RU', 'appid': appid, 'currency': currency, 'market_hash_name': market_hash_name}
-        market_info = self.account.session.get(f"{url}?{urllib.parse.urlencode(params)}", timeout=10)
-        return market_info.json() if market_info.ok else None
 
     def fetch_market_itemordershistogram(self, market_hash_name: str, appid: int = 3017120) -> ItemOrdersHistogram | None:
         if not self.account or not self.account.is_alive_session(): return None

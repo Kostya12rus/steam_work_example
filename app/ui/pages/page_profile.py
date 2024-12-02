@@ -286,6 +286,7 @@ class ProfileContent(ft.Column):
 
 
 class ProfilePage(BasePage):
+    load_position = 1
     def __init__(self):
         super().__init__()
         self.name = 'profile'

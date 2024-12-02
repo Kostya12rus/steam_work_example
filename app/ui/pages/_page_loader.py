@@ -41,10 +41,11 @@ class PageManager:
                 try:
                     module = importlib.import_module(module_name)
                     for attr in dir(module):
-                        obj = getattr(module, attr)
+                        obj: BasePage = getattr(module, attr)
                         if isinstance(obj, type) and issubclass(obj, BasePage) and obj is not BasePage:
                             pages.append(obj)
                 except Exception as e:
                     print(f"Ошибка при импорте {module_name}: {e}")
+        pages.sort(key=lambda x: x.load_position)
         return pages
 page_manager = PageManager()

@@ -253,12 +253,12 @@ class SellAllItemContent(ft.Container):
                 status = steam_api_utility.sell_item(select_item, amount=select_item.amount, price=price_get)
                 logger.info(f"Sell initiated: name='{item.name}', "
                             f"amount={select_item.amount}, "
-                            f"price_sell={self._price_prefix}{price_sell}{self._price_suffix}, "
-                            f"net_price={self._price_prefix}{_price_get}{self._price_suffix}, "
-                            f"steam_price={price_get}, "
+                            f"price_sell={self._price_prefix}{price_sell}{self._price_suffix} | шт., "
+                            f"net_price={self._price_prefix}{_price_get}{self._price_suffix} | шт., "
+                            f"steam_price={price_get} | шт., "
                             f"assetid={select_item.assetid}")
                 if not status or not status.get('success', False): select_item.amount = 0
-                logger.info(f"Sell: {status=}")
+                logger.info(f"Sell finished: {status=}")
 
             succell_amount = items_list.get_amount()
             count_item_sell += selling_amount - succell_amount
@@ -885,6 +885,11 @@ class SellItemDialog(ft.AlertDialog):
         count_item_sell = int(self._count_sell)
         price_get = int(float(self._price_get if self._price_get else 0) * 100)
 
+        _price_prefix = self.price_sell_input.prefix_text
+        _price_suffix = self.price_sell_input.suffix_text
+        _price_sell = f'{round(self._price_sell, 2):.2f}'
+        _price_get = f'{round(self._price_get, 2):.2f}'
+
         for item_content in self._items_content:
             if not self.open: break
             if count_item_sell <= 0: break
@@ -900,8 +905,15 @@ class SellItemDialog(ft.AlertDialog):
                 if not self.open:
                     select_item.amount = 0
                     continue
+                logger.info(f"Sell initiated: name='{item.name}', "
+                            f"amount={select_item.amount}, "
+                            f"price_sell={_price_prefix}{_price_sell}{_price_suffix}, "
+                            f"net_price={_price_prefix}{_price_get}{_price_suffix}, "
+                            f"steam_price={price_get} | шт., "
+                            f"assetid={select_item.assetid}")
                 status = self._steam_api_utility.sell_item(select_item, amount=select_item.amount, price=price_get)
                 if not status or not status.get('success', False): select_item.amount = 0
+                logger.info(f"Sell finished: {status=}")
                 self._add_log(status)
             succell_amount = items_list.get_amount()
             count_item_sell += selling_amount - succell_amount
@@ -1380,6 +1392,7 @@ class InventoryPageContent(ft.Column):
 
         self.sort_item_image = ft.Image(width=30, src=' ')
 
+        # Надо чтобы названия занимали минимум пространства
         self.sort_name_button = ft.FilledTonalButton()
         self.sort_name_button.text = 'Name'
         self.sort_name_button.width = 250
@@ -1387,7 +1400,7 @@ class InventoryPageContent(ft.Column):
         self.sort_name_button.on_click = self._on_click_sort
 
         self.sort_amount_button = ft.FilledTonalButton()
-        self.sort_amount_button.text = 'Amount'
+        self.sort_amount_button.text = 'Quantity'
         self.sort_amount_button.icon = ft.icons.ARROW_UPWARD
         self.sort_amount_button.icon_color = ft.colors.GREEN
         self.sort_amount_button.width = 110
@@ -1395,13 +1408,13 @@ class InventoryPageContent(ft.Column):
         self.sort_amount_button.on_click = self._on_click_sort
 
         self.sort_one_market_price_button = ft.FilledTonalButton()
-        self.sort_one_market_price_button.text = 'One Market Price'
+        self.sort_one_market_price_button.text = 'Unit Price'
         self.sort_one_market_price_button.expand = True
         self.sort_one_market_price_button.style = style
         self.sort_one_market_price_button.on_click = self._on_click_sort
 
         self.sort_price_button = ft.FilledTonalButton()
-        self.sort_price_button.text = 'Price'
+        self.sort_price_button.text = 'Total Price'
         self.sort_price_button.expand = True
         self.sort_price_button.style = style
         self.sort_price_button.on_click = self._on_click_sort
@@ -1413,7 +1426,7 @@ class InventoryPageContent(ft.Column):
         self.sort_min_price_button.on_click = self._on_click_sort
 
         self.sort_auto_buy_price_button = ft.FilledTonalButton()
-        self.sort_auto_buy_price_button.text = 'Auto Buy Price'
+        self.sort_auto_buy_price_button.text = 'AutoBuy Price'
         self.sort_auto_buy_price_button.expand = True
         self.sort_auto_buy_price_button.style = style
         self.sort_auto_buy_price_button.on_click = self._on_click_sort
@@ -1662,6 +1675,7 @@ class InventoryPageContent(ft.Column):
 
 
 class InventoryPage(BasePage):
+    load_position = 2
     def __init__(self):
         super().__init__()
         self.name = 'inventory'

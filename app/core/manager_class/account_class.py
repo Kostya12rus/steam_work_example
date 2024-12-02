@@ -11,8 +11,6 @@ class Account:
         self.wallet_currency: int | None = None
         self.wallet_country: str | None = None
 
-        self.wallet_country
-
         self.__access_token = None
         self.__wallet_info: dict | None = None
         self.__lock = threading.Lock()

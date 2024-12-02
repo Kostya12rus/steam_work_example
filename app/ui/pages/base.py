@@ -14,6 +14,7 @@ class Title(ft.Row):
         self.controls = [self.container]
 
 class BasePage(ft.Container):
+    load_position: int = 99
     def __init__(self):
         super().__init__()
 

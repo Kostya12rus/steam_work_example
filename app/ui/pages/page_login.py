@@ -162,6 +162,7 @@ class AccountsList(ft.Column):
                 self.add_account(account_class)
 
 class LoginPage(BasePage):
+    load_position = 0
     def __init__(self):
         super().__init__()
         self.name = 'login'

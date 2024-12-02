@@ -204,6 +204,7 @@ class AppIDsPageContent(ft.Column):
         app_details.save()
 
 class AppIDsPage(BasePage):
+    load_position = 99
     def __init__(self):
         super().__init__()
         self.name = 'app_ids'

@@ -845,6 +845,7 @@ class TradePageContent(ft.Column):
 
 
 class TradePage(BasePage):
+    load_position = 3
     def __init__(self):
         super().__init__()
         self.name = 'trade'
