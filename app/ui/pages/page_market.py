@@ -33,6 +33,8 @@ class MarketPage(BasePage):
 
         self.disabled_is_logout = True
 
+        self.visible = False
+
         self.page_content = MarketPageContent()
 
     def on_callback_authenticated(self, account: Account):

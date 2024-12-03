@@ -207,6 +207,7 @@ class SteamAPIUtility:
             print(f"Error fetching market item ID: {e}")
             return None
 
+
     def fetch_market_itemordershistogram(self, market_hash_name: str, appid: int = 3017120) -> ItemOrdersHistogram | None:
         if not self.account or not self.account.is_alive_session(): return None
         item_nameid = self.fetch_item_nameid(market_hash_name=market_hash_name, appid=appid)
@@ -250,6 +251,35 @@ class SteamAPIUtility:
         }
         market_info = self.account.session.post(url=url, timeout=10, headers=headers, data=params)
         return market_info.json() if market_info.ok else None
+
+
+    def combine_itemstacks(self, fromitem: InventoryItem, destitem: InventoryItem) -> str | None:
+        if not fromitem or not destitem: return
+        if fromitem.appid != destitem.appid: return
+        if fromitem.assetid == destitem.assetid: return
+        fromitemid = fromitem.assetid
+        destitemid = destitem.assetid
+        quantity = fromitem.amount
+        return self._start_stack_items(appid=fromitem.appid, fromitemid=fromitemid, destitemid=destitemid, quantity=quantity)
+    def _start_stack_items(self, appid: int | str, fromitemid: int | str, destitemid: int | str, quantity: int | str):
+        if not self.account or not self.account.is_alive_session(): return
+        access_token = self.account.get_steam_web_token()
+        if not access_token: return
+        steam_id = self.account.steam_id
+        try:
+            url = 'https://api.steampowered.com/IInventoryService/CombineItemStacks/v1/'
+            data = {
+                'access_token': access_token,
+                'appid': appid,
+                'fromitemid': fromitemid,
+                'destitemid': destitemid,
+                'quantity': quantity,
+                'steamid': steam_id,
+            }
+            response = self.account.session.post(url, data=data, timeout=10)
+            return response
+        except:
+            return None
 
 
 class InventoryManager:
@@ -388,6 +418,8 @@ class InventoryItemRgDescriptions:
     def get_amount(self):
         amount = sum([int(i.amount) for i in self.items])
         return amount if amount > 0 else 0
+    def get_items_amount(self) -> int:
+        return len(self.items)
     def get_market_url(self) -> str | None:
         if not self.market_hash_name: return
         return f'https://steamcommunity.com/market/listings/{self.appid}/{self.market_hash_name}'

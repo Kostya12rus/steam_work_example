@@ -1094,10 +1094,8 @@ class ItemRowContent(ft.Container):
         self.padding = ft.padding.all(2)
         self.on_click = lambda *args: None
         self.alignment = ft.alignment.center_left
-        # self.border = ft.border.all(1)
-        # self.border_radius = ft.border_radius.all(5)
         self.border_radius = ft.border_radius.all(0)
-        self.border = ft.border.only(top=ft.BorderSide(1))
+        self.border = ft.border.only(bottom=ft.BorderSide(1))
         # endregion
 
         # region Class params
@@ -1453,7 +1451,7 @@ class InventoryPageContent(ft.Column):
 
         # region Items Content
         self._items_column = ft.ListView()
-        self._items_column.spacing = 2
+        self._items_column.spacing = 0
         self._items_column.expand = True
         self._items_column.controls = []
         self._items_column.padding = ft.padding.all(2)
@@ -1470,7 +1468,6 @@ class InventoryPageContent(ft.Column):
         self.bottom_load_individual_price_button.icon = ft.icons.DOWNLOAD
         self.bottom_load_individual_price_button.icon_color = ft.colors.GREEN
         self.bottom_load_individual_price_button.expand = True
-        self.bottom_load_individual_price_button.disabled = True
         self.bottom_load_individual_price_button.style = style
         self.bottom_load_individual_price_button.on_click = self._on_click_load_individual_price
 
@@ -1478,13 +1475,13 @@ class InventoryPageContent(ft.Column):
         self.bottom_sell_all_items_button.text = 'Sell all items'
         self.bottom_sell_all_items_button.icon = ft.icons.SELL
         self.bottom_sell_all_items_button.expand = True
-        self.bottom_sell_all_items_button.disabled = True
         self.bottom_sell_all_items_button.style = style
         self.bottom_sell_all_items_button.on_click = self._on_click_sell_all_items
 
         self.botton_row = ft.Row()
         self.botton_row.spacing = 2
         self.botton_row.height = 25
+        self.botton_row.disabled = True
         self.botton_row.alignment = ft.MainAxisAlignment.START
         self.botton_row.vertical_alignment = ft.CrossAxisAlignment.CENTER
         self.botton_row.controls = [
@@ -1500,7 +1497,7 @@ class InventoryPageContent(ft.Column):
         items_column.controls = [
             self.sort_row,
             self._items_column,
-            self.botton_row,
+            # self.botton_row,
         ]
 
         container_items = ft.Container()
@@ -1515,6 +1512,7 @@ class InventoryPageContent(ft.Column):
         self.controls = [
             ft.Row(controls=[self.title_row]),
             container_items,
+            self.botton_row
         ]
         # endregion
 
@@ -1536,10 +1534,8 @@ class InventoryPageContent(ft.Column):
             market_listing = self._steam_api_utility.get_market_listings(appid=app_id)
             market_listing_kv = {str(item.asset_description.classid): item for item in market_listing}
 
-            self.bottom_sell_all_items_button.disabled = len(inventory) <= 0
-            if self.bottom_sell_all_items_button.page: self.bottom_sell_all_items_button.update()
-            self.bottom_load_individual_price_button.disabled = len(inventory) <= 0
-            if self.bottom_load_individual_price_button.page: self.bottom_load_individual_price_button.update()
+            self.botton_row.disabled = len(inventory) <= 0
+            if self.botton_row.page: self.botton_row.update()
 
             app_inventory = self.__items_content.get(str(app_id), {})
 
