@@ -5,6 +5,7 @@ import json
 import time
 import datetime
 import urllib.parse
+from enum import Enum
 
 from app.core import Account
 from app.database import sql_manager
@@ -282,6 +283,93 @@ class SteamAPIUtility:
             return None
 
 
+    def fetch_my_listings(self) -> MarketListingsManager | None:
+        return self.__load_mylistings()
+    def __load_mylistings(self, start: int = 0, count: int = 100) -> MarketListingsManager | None:
+        if not self.account or not self.account.is_alive_session(): return None
+        def_url = f'https://steamcommunity.com/market/mylistings'
+        def_params = {
+            'norender': 1,
+            'start': start,
+            'count': count,
+        }
+        try:
+            req = self.account.session.get(url=def_url, params=def_params, timeout=10)
+            if not req.ok: return None
+            req_json = req.json()
+            if not req_json.get('success', False): return None
+
+            listings = MarketListingsManager(req_json)
+            next_page_start = listings.get_next_page_start()
+            if next_page_start is not None:
+                next_listings = self.__load_mylistings(start=next_page_start, count=count)
+                listings.add_next_page(next_listings)
+            return listings
+        except:
+            time.sleep(5)
+        return None
+
+    def remove_my_listing(self, item: MarketListingsListing) -> bool:
+        if not item or not item.listingid: return False
+        return self.__start_remove_my_listing(item.listingid)
+    def __start_remove_my_listing(self, listingid: str | int) -> bool:
+        if not self.account or not self.account.is_alive_session(): return False
+        sessionid = self.fetch_session_id()
+        if not sessionid: return False
+        try:
+            url = f'https://steamcommunity.com/market/removelisting/{listingid}'
+            params = {
+                "sessionid": sessionid
+            }
+            headers = {
+                "Origin": f"https://steamcommunity.com",
+                "Referer": f"https://steamcommunity.com/market/",
+            }
+            market_info = self.account.session.post(url=url, timeout=10, headers=headers, data=params)
+            return market_info.ok
+        except:
+            return False
+    
+    def fetch_market_myhistory(self, amount: int = 500):
+        return self.__load_market_history(fetch_amount=amount)
+    def __load_market_history(self, fetch_amount: int = 500, start: int = 0, count: int = 500):
+        if not self.account or not self.account.is_alive_session(): return False
+        def_url = f'https://steamcommunity.com/market/myhistory/render/'
+        def_params = {
+            'query': None,
+            'norender': 1,
+            'start': start,
+            'count': count,
+        }
+        try:
+            req = self.account.session.get(url=def_url, params=def_params, timeout=10)
+            if not req.ok: return None
+            req_json = req.json()
+            if not req_json.get('success', False): return None
+            # print()
+            #
+            # listings = MarketListingsManager(req_json)
+            # next_page_start = listings.get_next_page_start()
+            # if next_page_start is not None:
+            #     next_listings = self.__load_mylistings(start=next_page_start, count=count)
+            #     listings.add_next_page(next_listings)
+            # return listings
+        except:
+            time.sleep(5)
+        return None
+
+
+class ItemDescription:
+    def __init__(self, description_dict: dict = None):
+        if not description_dict: description_dict = {}
+        self.type = description_dict.get('type', '')
+        self.value = description_dict.get('value', '')
+    def __repr__(self):
+        return f"ItemDescription: type={self.type}, value={self.value}"
+    def __str__(self):
+        return f"ItemDescription: type={self.type}, value={self.value}"
+
+
 class InventoryManager:
     def __init__(self, items: dict, context_id=2):
         self.data_json = items
@@ -317,18 +405,15 @@ class InventoryManager:
         self.inventory = [InventoryItemRgDescriptions(item) for item in inventory]
 
     def get_tradable_inventory(self) -> list[InventoryItemRgDescriptions]:
-        return [item for item in self.inventory if item.tradable]
+        return [item for item in self.inventory if item.is_tradable()]
+
+    def get_marketable_inventory(self) -> list[InventoryItemRgDescriptions]:
+        return [item for item in self.inventory if item.is_marketable()]
 
     def get_amount_items(self, only_tradable=True) -> int:
         inventory = self.get_tradable_inventory() if only_tradable else self.inventory
         return sum([item.get_amount() for item in inventory])
 
-
-class ItemDescription:
-    def __init__(self, description_dict: dict = None):
-        if not description_dict: description_dict = {}
-        self.type = description_dict.get('type', '')
-        self.value = description_dict.get('value', '')
 class InventoryItemTag:
     def __init__(self, tag_dict: dict = None):
         if not tag_dict: tag_dict = {}
@@ -554,11 +639,9 @@ class ItemOrdersHistogramOrderGraph:
         if not data_json: data_json = []
         self.data_json = data_json
     def get_max_price(self):
-        if self.data_json: return max(order[0] for order in self.data_json)
-        return 0
+        return max(order[0] for order in self.data_json) if self.data_json else 0
     def get_min_price(self):
-        if self.data_json: return min(order[0] for order in self.data_json)
-        return 0
+        return min(order[0] for order in self.data_json) if self.data_json else 0
 class ItemOrdersHistogram:
     def __init__(self, data_json: dict = None):
         if not data_json: data_json = {}
@@ -597,3 +680,366 @@ class ItemOrdersHistogram:
         return f'{self.price_prefix}{f"{self.get_lowest_sell_order():.2f}"}{self.price_suffix}'
     def get_lowest_sell_order_str_by_amount(self, amount: int) -> str:
         return f'{self.price_prefix}{f"{self.get_lowest_sell_order_by_amount(amount=amount):.2f}"}{self.price_suffix}'
+
+
+class MarketListingsManager:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+        self.success: bool = bool(data_json.get('success', 0))
+        self.start: int = data_json.get('start', 0)
+        self.pagesize: int = data_json.get('pagesize', 0)
+        self.total_count: int = data_json.get('total_count', 0)
+        self.num_active_listings: int = data_json.get('num_active_listings', 0)
+
+        self.assets: dict[str, MarketListingsAsset] = self.__parce_assets(data_json.get('assets', {}))
+        self.listings: list[MarketListingsListing] = self.__parce_listings(data_json.get('listings', []))
+        self.listings_on_hold: list[MarketListingsListing] = self.__parce_listings(data_json.get('listings_on_hold', []))
+        self.listings_to_confirm: list[MarketListingsListing] = self.__parce_listings(data_json.get('listings_to_confirm', []))
+        self.buy_orders: list = [MarketListingsBuyOrder(listing) for listing in data_json.get('buy_orders', [])]
+    def __str__(self):
+        return f"MarketListingsManager: assets={len(self.assets)}, listings={len(self.listings)}, on_hold={len(self.listings_on_hold)}, to_confirm={len(self.listings_to_confirm)}, buy_orders={len(self.buy_orders)}"
+    def __repr__(self):
+        return f"MarketListingsManager: assets={len(self.assets)}, listings={len(self.listings)}, on_hold={len(self.listings_on_hold)}, to_confirm={len(self.listings_to_confirm)}, buy_orders={len(self.buy_orders)}"
+    def __parce_listings(self, data_json: list) -> list[MarketListingsListing]:
+        if not data_json: data_json = []
+        listings = []
+
+        for listing in data_json:
+            class_listing = MarketListingsListing(listing)
+            class_listing.asset_master = self.assets.get(class_listing.get_asset_master_id(), None)
+            listings.append(class_listing)
+
+        return listings
+    def __parce_assets(self, data_json: dict) -> dict[str, MarketListingsAsset]:
+        if not data_json: data_json = {}
+        assets = {}
+
+        for app_id, app_data in data_json.items():
+            for contextid, context_data in app_data.items():
+                for asset_id, asset_data in context_data.items():
+                    assets[f'{app_id}_{contextid}_{asset_id}'] = MarketListingsAsset(asset_data)
+
+        return assets
+
+    def get_next_page_start(self) -> int | None:
+        if not self.success: return None
+        next_page = self.start + self.pagesize
+        if next_page >= self.total_count: return None
+        return next_page
+
+    def add_next_page(self, next_page: MarketListingsManager):
+        if not next_page or not next_page.success: return
+
+        self.assets.update(next_page.assets)
+        self.listings.extend(next_page.listings)
+        self.listings_on_hold.extend(next_page.listings_on_hold)
+        self.listings_to_confirm.extend(next_page.listings_to_confirm)
+        self.buy_orders.extend(next_page.buy_orders)
+
+        return self
+
+class MarketListingsBuyOrderDescription:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.appid = data_json.get('appid', 0)
+
+        self.classid = data_json.get('classid', '')
+        self.instanceid = data_json.get('instanceid', '')
+
+        self.name = data_json.get('name', '')
+        self.name_color = data_json.get('name_color', '')
+        self.market_name = data_json.get('market_name', '')
+        self.market_hash_name = data_json.get('market_hash_name', '')
+        self.icon_url = data_json.get('icon_url', '')
+        self.icon_url_large = data_json.get('icon_url_large', '')
+        self.background_color = data_json.get('background_color', '')
+
+        self.commodity = data_json.get('commodity', 0)
+        self.tradable = data_json.get('tradable', 0)
+        self.marketable = data_json.get('marketable', 0)
+
+        self.currency = data_json.get('currency', 0)
+        self.descriptions = data_json.get('descriptions', [])
+        self.actions = data_json.get('actions', [])
+        self.owner_descriptions = data_json.get('owner_descriptions', [])
+        self.owner_actions = data_json.get('owner_actions', [])
+        self.fraudwarnings = data_json.get('fraudwarnings', [])
+        self.type = data_json.get('type', '')
+        self.market_fee = data_json.get('market_fee')
+        self.market_fee_app = data_json.get('market_fee_app')
+        self.contained_item = data_json.get('contained_item')
+        self.market_actions = data_json.get('market_actions', [])
+        self.market_tradable_restriction = data_json.get('market_tradable_restriction', 0)
+        self.market_marketable_restriction = data_json.get('market_marketable_restriction', 0)
+        self.tags = data_json.get('tags', [])
+        self.item_expiration = data_json.get('item_expiration')
+        self.market_buy_country_restriction = data_json.get('market_buy_country_restriction')
+        self.market_sell_country_restriction = data_json.get('market_sell_country_restriction')
+        self.sealed = data_json.get('sealed')
+    def __str__(self):
+        return f"MarketListingsBuyOrderDescription(appid={self.appid}, name='{self.name}')"
+    def __repr__(self):
+        return self.__str__()
+class MarketListingsBuyOrder:
+    def __init__(self, data_json: dict = None):
+        if not data_json:
+            data_json = {}
+        self.data_json = data_json
+
+        self.appid = data_json.get('appid', 0)
+
+        self.hash_name = data_json.get('hash_name', '')
+        self.price = data_json.get('price', '0')
+        self.quantity = data_json.get('quantity', '0')
+        self.quantity_remaining = data_json.get('quantity_remaining', '0')
+
+        self.wallet_currency = data_json.get('wallet_currency', 0)
+        self.buy_orderid = data_json.get('buy_orderid', '')
+        self.description = MarketListingsBuyOrderDescription(data_json.get('description', {}))
+
+    def __str__(self):
+        return (f"MarketListingsBuyOrder(appid={self.appid}, hash_name='{self.hash_name}', "
+                f"price={self.price}, quantity={self.quantity}, buy_orderid='{self.buy_orderid}')")
+    def __repr__(self):
+        return self.__str__()
+
+class MarketListingsListing:
+    def __init__(self, data_json: dict = None):
+        if not data_json:
+            data_json = {}
+        self.data_json = data_json
+
+        self.listingid = data_json.get('listingid', '')                             # str: '5175294578385203531'
+        self.active = data_json.get('active', 0)                                    # int: 1 (1 - активен, 0 - неактивен)
+        self.status = data_json.get('status', 0)                                    # int: 2 (статус листинга)
+        self.cancel_reason = data_json.get('cancel_reason', 0)                      # int: 0 (причина отмены)
+        self.item_expired = data_json.get('item_expired', 0)                        # int: 0 (признак истечения)
+        self.steamid_lister = data_json.get('steamid_lister', '')                   # str: '76561198061407679'
+
+        self.asset = MarketListingsAsset(data_json.get('asset', {}))                # MarketListingsAsset
+        self.asset_master = None
+
+        self.time_created = data_json.get('time_created', 0)                        # int: 1733341062
+        self.time_created_str = data_json.get('time_created_str', '')               # str: '4 дек'
+        self.time_finish_hold = data_json.get('time_finish_hold', 0)                # int: 0
+
+        self.currencyid = data_json.get('currencyid', '')                           # str: '2037'
+        self.converted_currencyid = data_json.get('converted_currencyid', '')       # str: '2037'
+
+        self.original_amount_listed = data_json.get('original_amount_listed', 0)                        # int: 3
+
+        self.price = data_json.get('price', 0)                                                          # int: 2892 (цена в сотых долях)
+        self.original_price = data_json.get('original_price', 0)                                        # int: 4338
+        self.original_price_per_unit = data_json.get('original_price_per_unit', 0)                      # int: 1446
+        self.converted_price = data_json.get('converted_price', 0)                                      # int: 2892
+        self.converted_price_per_unit = data_json.get('converted_price_per_unit', 0)                    # int: 1446
+
+        self.publisher_fee_app = data_json.get('publisher_fee_app', 0)                                  # int: 3037410
+        self.publisher_fee_percent = data_json.get('publisher_fee_percent', '0.0')                      # str: '0.100000001490116119'
+
+        self.publisher_fee = data_json.get('publisher_fee', 0)                                          # int: 289
+        self.publisher_fee_per_unit = data_json.get('publisher_fee_per_unit', 0)                        # int: 144
+        self.converted_publisher_fee = data_json.get('converted_publisher_fee', 0)                      # int: 289
+        self.converted_publisher_fee_per_unit = data_json.get('converted_publisher_fee_per_unit', 0)    # int: 144
+
+        self.fee = data_json.get('fee', 0)                                                              # int: 433 (комиссия в сотых долях)
+        self.fee_per_unit = data_json.get('fee_per_unit', 0)                                            # int: 216
+        self.converted_fee = data_json.get('converted_fee', 0)                                          # int: 433
+        self.converted_fee_per_unit = data_json.get('converted_fee_per_unit', 0)                        # int: 216
+
+        self.steam_fee = data_json.get('steam_fee', 0)                                                  # int: 144
+        self.steam_fee_per_unit = data_json.get('steam_fee_per_unit', 0)                                # int: 72
+        self.converted_steam_fee = data_json.get('converted_steam_fee', 0)                              # int: 144
+        self.converted_steam_fee_per_unit = data_json.get('converted_steam_fee_per_unit', 0)            # int: 72
+
+    def __str__(self):
+        return (
+            f"Listing ID: {self.listingid}, Name: {self.asset.name}, "
+            f"Price: {self.price / 100:.2f}, Status: {self.status}, Active: {self.active}, "
+            f"Time Created: {self.time_created_str}"
+        )
+    def __repr__(self):
+        return self.__str__()
+    def get_app_class(self):
+        asset = self.asset_master if self.asset_master else self.asset
+        return MarketListingsApp(app_icon=asset.app_icon, appid=int(asset.appid))
+    def get_amount_class(self) -> MarketListingsAmount:
+        return MarketListingsAmount(self.asset)
+    def get_item_class(self) -> MarketListingsItem:
+        return MarketListingsItem(self.asset_master if self.asset_master else self.asset)
+    def get_price_class(self) -> MarketListingsPrice:
+        return MarketListingsPrice(self)
+    def get_datetime_create(self) -> datetime.datetime:
+        if not self.time_created: return datetime.datetime.min
+        return datetime.datetime.fromtimestamp(self.time_created)
+    def get_asset_master_id(self):
+        return f"{self.asset.appid}_{self.asset.contextid}_{self.asset.id}"
+class MarketListingsApp:
+    def __init__(self, app_icon: str, appid: int):
+        self.app_icon = app_icon
+        self.appid = appid
+    def get_steam_store_url(self) -> str:
+        return f'https://store.steampowered.com/app/{self.appid}'
+    def get_icon_url(self) -> str:
+        return self.app_icon if self.app_icon else " "
+class MarketListingsAmount:
+    def __init__(self, accet: MarketListingsAsset):
+        self.amount: int = int(accet.amount) if accet.amount else 0
+        self.original_amount: int = int(accet.original_amount) if accet.original_amount else 0
+    def get_amount_start(self) -> int:
+        return self.original_amount
+
+    def get_amount(self) -> int:
+        return self.amount
+    def get_amount_percent(self) -> float:
+        if not self.original_amount: return 0
+        return self.amount / self.original_amount
+    def get_amount_percent_str(self) -> str:
+        return f'{self.get_amount_percent()*100:.2f}%'
+
+    def get_sell_amount(self) -> int:
+        return self.original_amount - self.amount
+    def get_sell_percent(self) -> float:
+        if not self.original_amount: return 0
+        return self.get_sell_amount() / self.original_amount
+    def get_sell_percent_str(self) -> str:
+        return f'{self.get_sell_percent()*100:.2f}%'
+
+    def get_total(self, prefix: str = '', suffix: str = '') -> str:
+        if self.amount == self.original_amount:
+            return f'{prefix}{self.amount}{suffix}'
+        return f'{prefix}{self.amount} <- {self.original_amount} (Sold: {self.get_sell_amount()}, {self.get_sell_percent_str()}){suffix}'
+class MarketListingsPrice:
+    def __init__(self, listing: MarketListingsListing):
+        amount = listing.get_amount_class()
+        self.amount = amount.get_amount()
+        self.start_amount = amount.get_amount_start()
+
+        self.fee = listing.fee
+        self.per_unit_fee = listing.fee_per_unit
+
+        self.price_per_unit_net = listing.original_price_per_unit
+        self.price_per_unit = self.price_per_unit_net + self.per_unit_fee
+
+        self.price_net = listing.price
+        self.price = self.price_net + self.fee
+
+        self.start_price_net = listing.original_price
+        self.start_price = self.start_price_net + (self.per_unit_fee * self.start_amount)
+
+    def get_price_per_unut(self, is_str: bool=False, prefix: str='', suffix: str='') -> str | float:
+        price = self.price_per_unit * 0.01
+        return f"{prefix}{price:.2f}{suffix}" if is_str else round(price, 2)
+    def get_price_per_unut_net(self, is_str: bool=False, prefix: str='', suffix: str='') -> str | float:
+        price = self.price_per_unit_net * 0.01
+        return f"{prefix}{price:.2f}{suffix}" if is_str else round(price, 2)
+
+    def get_now_price(self, is_str: bool=False, prefix: str='', suffix: str='') -> str | float:
+        price = self.price * 0.01
+        return f"{prefix}{price:.2f}{suffix}" if is_str else round(price, 2)
+    def get_now_price_net(self, is_str: bool=False, prefix: str='', suffix: str='') -> str | float:
+        price = self.price_net * 0.01
+        return f"{prefix}{price:.2f}{suffix}" if is_str else round(price, 2)
+
+    def get_start_price(self, is_str: bool=False, prefix: str='', suffix: str='') -> str | float:
+        price = self.start_price * 0.01
+        return f"{prefix}{price:.2f}{suffix}" if is_str else round(price, 2)
+    def get_start_price_net(self, is_str: bool=False, prefix: str='', suffix: str='') -> str | float:
+        price = self.start_price_net * 0.01
+        return f"{prefix}{price:.2f}{suffix}" if is_str else round(price, 2)
+
+    def get_total(self, prefix: str = '', suffix: str = '') -> str:
+        price_per_unit_str = f'{self.get_price_per_unut()}({self.get_price_per_unut_net()})'
+        start_price_str = f'{self.get_start_price()}({self.get_start_price_net()})' if self.amount != self.start_amount else ''
+        now_price_str = f'{self.get_now_price()}({self.get_now_price_net()})' if self.start_amount != 1 else ''
+
+        price_details = " <- ".join(filter(None, [now_price_str, start_price_str]))
+        return f'{prefix} {price_per_unit_str} {price_details} {suffix}'.replace('  ', ' ').strip()
+class MarketListingsItem:
+    def __init__(self, accet: MarketListingsAsset):
+        self.appid = accet.appid
+        self.app_icon = accet.app_icon
+
+        self.id = accet.id
+        self.classid = accet.classid
+        self.instanceid = accet.instanceid
+        self.contextid = accet.contextid
+
+        self.icon_url = accet.icon_url
+        self.icon_url_large = accet.icon_url_large
+
+        self.market_hash_name = accet.market_hash_name
+        self.market_name = accet.market_name
+        self.name = accet.name
+        self.name_color = accet.name_color
+        self.background_color = accet.background_color
+        self.descriptions = accet.descriptions
+
+        self.commodity = accet.commodity
+        self.tradable = accet.tradable
+        self.marketable = accet.marketable
+    def get_item_id(self) -> str:
+        return f'{self.classid}_{self.instanceid}'
+    def get_app_class(self):
+        return MarketListingsApp(app_icon=self.app_icon, appid=int(self.appid))
+    def get_color(self):
+        if not self.name_color: return ''
+        clear_color = self.name_color.replace('#', '')
+        return f'#{clear_color}'
+    def get_market_url(self) -> str:
+        if not self.market_hash_name: return ''
+        return f'https://steamcommunity.com/market/listings/{self.appid}/{self.market_hash_name}'
+    def get_icon_url(self, width: int = 64, height: int = 64) -> str:
+        icon_url = self.icon_url if self.icon_url else self.icon_url_large
+        if not icon_url: return ' '
+        return f'https://community.akamai.steamstatic.com/economy/image/{icon_url}/{width}x{height}?allow_animated=1'
+    def is_commodity(self):
+        return bool(self.commodity)
+    def is_tradable(self):
+        return bool(self.tradable) and self.is_commodity()
+    def is_marketable(self):
+        return bool(self.marketable) and self.is_commodity()
+class MarketListingsAsset:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.appid = data_json.get('appid', 0)
+        self.app_icon = data_json.get('app_icon', '')
+
+        self.status = data_json.get('status', 0)
+
+        self.id = data_json.get('id', '')
+        self.classid = data_json.get('classid', '')
+        self.instanceid = data_json.get('instanceid', '')
+        self.contextid = data_json.get('contextid', '')
+        self.amount = data_json.get('amount', '0')
+        self.original_amount = data_json.get('original_amount', '0')
+
+        self.name = data_json.get('name', '')
+        self.name_color = data_json.get('name_color', '')
+        self.market_name = data_json.get('market_name', '')
+        self.market_hash_name = data_json.get('market_hash_name', '')
+        self.icon_url = data_json.get('icon_url', '')
+        self.icon_url_large = data_json.get('icon_url_large', '')
+        self.background_color = data_json.get('background_color', '')
+
+        self.commodity = data_json.get('commodity', 0)
+        self.tradable = data_json.get('tradable', 0)
+        self.marketable = data_json.get('marketable', 0)
+
+        self.currency = data_json.get('currency', 0)
+        self.unowned_id = data_json.get('unowned_id', '')
+        self.unowned_contextid = data_json.get('unowned_contextid', '')
+        self.descriptions = [ItemDescription(item) for item in data_json.get('descriptions', [])]
+        self.type = data_json.get('type', '')
+        self.market_tradable_restriction = data_json.get('market_tradable_restriction', 0)
+        self.market_marketable_restriction = data_json.get('market_marketable_restriction', 0)
+        self.owner = data_json.get('owner', 0)
+    def __str__(self):
+        return f"MarketListing: {self.market_hash_name} (ID: {self.id}, Amount: {self.amount})"
+    def __repr__(self):
+        return self.__str__()

@@ -543,6 +543,8 @@ class SellAllItemsDialog(ft.AlertDialog):
         self._button_start_sell = create_button_widget()
         self._button_start_sell.text = 'Start Sell'
         self._button_start_sell.expand = True
+        self._button_start_sell.icon = ft.icons.SELL
+        self._button_start_sell.icon_color = ft.colors.GREEN
         self._button_start_sell.on_click = self._on_click_start_sell
 
         self.actions_alignment = ft.MainAxisAlignment.CENTER,
@@ -605,9 +607,20 @@ class SellAllItemsDialog(ft.AlertDialog):
             if self._button_start_sell.page: self._button_start_sell.update()
 
     def _on_click_start_sell(self, *args):
-        for item_control in self._items_column.controls:
-            item_control: SellAllItemContent
-            item_control.start_sell(self._steam_api_utility)
+        if self._button_start_sell.disabled: return
+        self._button_start_sell.disabled = True
+        self._button_start_sell.icon_color = ft.colors.RED
+        if self._button_start_sell.page: self._button_start_sell.update()
+
+        try:
+            for item_control in self._items_column.controls:
+                item_control: SellAllItemContent
+                item_control.start_sell(self._steam_api_utility)
+        finally:
+            self._button_start_sell.disabled = False
+            self._button_start_sell.icon_color = ft.colors.GREEN
+            if self._button_start_sell.page: self._button_start_sell.update()
+
     def _on_change_percent_radio_group(self, *args):
         value = parce_value(self._percent_radio_group.value)
         value = value if value else 1.0

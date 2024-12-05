@@ -9,5 +9,5 @@ steam
 loguru
 Pillow
 pyinstaller
-flet==0.24.1
+flet==0.25.1
 beautifulsoup4

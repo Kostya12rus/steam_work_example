@@ -258,6 +258,7 @@ class StackerPageContent(ft.Column):
 
             is_stackable = any(item.get_items_amount() > 1 for item in inventory)
             self._botton_row.disabled = not is_stackable
+            self._start_stacking_all_button.text = f'Stack {sum(item.get_items_amount()-1 for item in inventory)} items'
             self._start_stacking_all_button.icon_color = ft.colors.GREEN if is_stackable else ft.colors.RED
             if self._botton_row.page: self._botton_row.update()
 

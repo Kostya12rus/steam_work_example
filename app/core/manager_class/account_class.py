@@ -16,16 +16,18 @@ class Account:
         self.__lock = threading.Lock()
         self.__last_check_status = None
         self.__last_check_time = datetime.datetime.min
+        self.__lock_check_session = threading.Lock()
     def is_alive_session(self, is_callback: bool = True) -> bool:
-        if self.__last_check_status and self.__last_check_time + datetime.timedelta(seconds=30) > datetime.datetime.now():
-            return self.__last_check_status
-        self.__last_check_time = datetime.datetime.now()
+        with self.__lock_check_session:
+            if self.__last_check_status and self.__last_check_time + datetime.timedelta(seconds=30) > datetime.datetime.now():
+                return self.__last_check_status
+            self.__last_check_time = datetime.datetime.now()
 
-        req = self.session.get("https://steamcommunity.com")
-        self.__last_check_status = req.ok and self.account_name.lower() in req.text.lower()
-        if is_callback and not self.__last_check_status: callback_manager.trigger(EventName.ON_ACCOUNT_SESSION_EXPIRED, self)
-        print(f'is_alive_session: {self.__last_check_status}')
-        return self.__last_check_status
+            req = self.session.get("https://steamcommunity.com")
+            self.__last_check_status = req.ok and self.account_name.lower() in req.text.lower()
+            if is_callback and not self.__last_check_status: callback_manager.trigger(EventName.ON_ACCOUNT_SESSION_EXPIRED, self)
+            print(f'is_alive_session: {self.__last_check_status}')
+            return self.__last_check_status
     def get_steam_web_token(self):
         with self.__lock:
             if self.__access_token: return self.__access_token
