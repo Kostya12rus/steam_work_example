@@ -45,7 +45,7 @@ class Account:
             except:
                 return None
     def load_wallet_info(self):
-        if self.__wallet_info: return
+        if self.__wallet_info: return self.__wallet_info
         if not self.is_alive_session(): return
         url = "https://steamcommunity.com/market/"
         try:
@@ -59,6 +59,7 @@ class Account:
                     self.wallet_currency = self.__wallet_info.get('wallet_currency', None)
                     self.wallet_country = self.__wallet_info.get('wallet_country', None)
                     print(f"Wallet info loaded. Currency: {self.wallet_currency}, Country: {self.wallet_country}")
+                    return self.__wallet_info
         except Exception as e:
             print(f"Error fetching wallet info: {e}")
 

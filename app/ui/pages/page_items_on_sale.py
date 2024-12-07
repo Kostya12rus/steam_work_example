@@ -11,6 +11,8 @@ from app.package.data_collectors import (
     MarketListingsAmount,
     MarketListingsPrice,
     MarketListingsItem,
+    MarketMyHistoryManager,
+    MarketMyHistoryParcedEvent
 )
 
 def create_text_widget():
@@ -21,6 +23,184 @@ def create_text_widget():
     widget.text_align = ft.TextAlign.CENTER
     widget.overflow = ft.TextOverflow.ELLIPSIS
     return widget
+
+class HistoryItemContent(ft.Container):
+    def __init__(self, item: MarketMyHistoryParcedEvent, prefix: str='', suffix: str=''):
+        # region ft.Container params
+        super().__init__()
+        self.ink = True
+        self.padding = ft.padding.all(2)
+        self.on_click = lambda *args: None
+        self.alignment = ft.alignment.center_left
+        self.border_radius = ft.border_radius.all(0)
+        self.border = ft.border.only(bottom=ft.BorderSide(1))
+        # endregion
+
+        # region Class params
+        item_name = item.get_item_name()
+        item_color = item.get_item_color()
+        item_icon_url = item.get_item_icon_url(width=30, height=30)
+        item_market_url = item.get_item_market_url()
+
+        app_icon_url = item.get_app_icon_url()
+
+        buy_amount = item.get_buy_amount()
+        left_amount = item.get_left_amount()
+        start_amount = buy_amount + left_amount
+
+        price_buy = item.get_price()
+        price_buy_net = item.get_price(is_net_price=True)
+
+        is_create = item.is_create()
+        is_cancel = item.is_cancel()
+        is_buy = item.is_buy()
+        is_sell = item.is_sell()
+        icon_event = None
+        color_event = None
+        if is_create:
+            icon_event = ft.icons.ADD_TASK  # Создание
+            color_event = "#4CAF50"  # Зеленый
+        elif is_cancel:
+            icon_event = ft.icons.CLOSE  # Отмена
+            color_event = "#F44336"  # Красный
+        elif is_buy:
+            icon_event = ft.icons.SHOPPING_CART  # Покупка
+            color_event = "#2196F3"  # Синий
+        elif is_sell:
+            icon_event = ft.icons.SELL  # Продажа
+            color_event = "#FF9800"  # Оранжевый
+        self.color_event = color_event
+        # endregion
+
+        # region Widgets
+        self.url = item_market_url
+
+        self.status_icon = ft.Icon()
+        self.status_icon.name = icon_event
+        self.status_icon.color = self.color_event
+        self.status_icon.height = 30
+
+        self.date_text = ft.Text()
+        self.date_text.size = 10
+        self.date_text.width = 75
+        self.date_text.value = item.datetime_event.strftime('%Y.%m.%d\n%H:%M:%S')
+        self.date_text.max_lines = 2
+        self.date_text.text_align = ft.TextAlign.CENTER
+
+        self.app_image = ft.Image()
+        self.app_image.width = 30
+        self.app_image.height = 30
+        self.app_image.src = app_icon_url
+
+        self.item_image = ft.Image()
+        self.item_image.width = 30
+        self.item_image.height = 30
+        self.item_image.src = item_icon_url
+
+        self.name_text = ft.Text()
+        self.name_text.size = 15
+        self.name_text.width = 250
+        self.name_text.value = item_name
+        self.name_text.color = item_color
+        self.name_text.max_lines = 1
+        self.name_text.selectable = True
+        self.name_text.text_align = ft.TextAlign.LEFT
+        self.name_text.overflow = ft.TextOverflow.ELLIPSIS
+
+        self.amount_text = ft.Text()
+        self.amount_text.size = 15
+        self.amount_text.expand = True
+        self.amount_text.value = f'{buy_amount} ({start_amount}->{left_amount})'
+        self.amount_text.max_lines = 1
+        self.amount_text.text_align = ft.TextAlign.LEFT
+
+        self.price_text = ft.Text()
+        self.price_text.size = 15
+        self.price_text.expand = True
+        self.price_text.value = f'{prefix}{price_buy}{suffix} ({prefix}{price_buy_net}{suffix})' if price_buy != price_buy_net else f'{prefix}{price_buy}{suffix}'
+        self.price_text.max_lines = 1
+        self.price_text.text_align = ft.TextAlign.LEFT
+
+        self.row = ft.Row()
+        self.row.spacing = 2
+        self.row.expand = True
+        self.row.alignment = ft.MainAxisAlignment.START
+        self.row.vertical_alignment = ft.CrossAxisAlignment.CENTER
+        self.row.controls = [
+            self.status_icon,
+            self.date_text,
+            self.app_image,
+            self.item_image,
+            self.name_text,
+            self.amount_text,
+            self.price_text,
+        ]
+
+        self.content = self.row
+        # endregion
+
+    def build(self):
+        # color_gradient = [
+        #     self.color_event,
+        #     "#FFFFFF" if self.page.theme_mode == ft.ThemeMode.LIGHT else "#212121"
+        # ]
+        # self.gradient = ft.LinearGradient(
+        #     begin=ft.alignment.center_right,
+        #     end=ft.alignment.center_left,
+        #     colors=color_gradient,
+        # )
+        return self
+
+class HistoryItemsDialog(ft.AlertDialog):
+    def __init__(self):
+        super().__init__()
+        # region ft.AlertDialog params
+        self.isolated = True
+        self.expand = True
+        # endregion
+
+        # region Class params
+        self._steam_api_utility: SteamAPIUtility | None = None
+        # endregion Class params
+
+        # region Title
+        self.title_name_text = ft.Text()
+        self.title_name_text.size = 29
+        self.title_name_text.max_lines = 1
+        self.title_name_text.value = 'History Market Sales'
+        self.title_name_text.weight = ft.FontWeight.BOLD
+        self.title_name_text.text_align = ft.TextAlign.CENTER
+        self.title_name_text.overflow = ft.TextOverflow.ELLIPSIS
+
+        self.title = self.title_name_text
+        # endregion
+
+        # region Items Column Content
+        self._items_column = ft.ListView()
+        self._items_column.spacing = 0
+        self._items_column.expand = True
+        self._items_column.padding = ft.padding.all(2)
+        self._items_column.controls = []
+        # endregion
+
+        # region Main Content
+        self.content = ft.Column()
+        self.content.width = 1000
+        self.content.expand = True
+        self.content.alignment = ft.MainAxisAlignment.START
+        self.content.vertical_alignment = ft.CrossAxisAlignment.START
+        self.content.controls = [
+            self._items_column,
+        ]
+        # endregion
+
+    def init(self, items_event: MarketMyHistoryManager, prefix: str='', suffix: str=''):
+        for event in items_event.parced_events:
+            item_control = HistoryItemContent(event, prefix=prefix, suffix=suffix)
+            self._items_column.controls.append(item_control)
+
+        if self.page: self.update()
+
 
 class ItemRowContent(ft.Container):
     def __init__(self, item: MarketListingsListing):
@@ -178,7 +358,6 @@ class ItemsOnSalePageContent(ft.Column):
         self._start_show_history_button.icon = ft.icons.HISTORY_EDU
         self._start_show_history_button.icon_color = ft.colors.GREEN
         self._start_show_history_button.expand = True
-        self._start_show_history_button.visible = False #TODO Дописать функционал
         self._start_show_history_button.style = button_style
         self._start_show_history_button.on_click = self._on_click_start_show_history
 
@@ -233,7 +412,7 @@ class ItemsOnSalePageContent(ft.Column):
                 self._on_update_is_work = True
                 return
 
-            self._bottom_button_disable(is_disabled=True)
+            self._bottom_button_disable()
 
             self._update_button.text = 'Loading...'
             self._update_button.icon_color = ft.colors.BLUE
@@ -293,8 +472,12 @@ class ItemsOnSalePageContent(ft.Column):
         print(f"_on_click_start_load_price_button: {args}")
 
     def _on_click_start_show_history(self, *args):
-        print(f"_on_click_start_show_history: {args}")
         history = self._steam_api_utility.fetch_market_myhistory()
+        if not history or not history.success: return
+
+        dialog = HistoryItemsDialog()
+        dialog.init(history)
+        if self.page: self.page.open(dialog)
 
     def on_update_account(self, account: Account = None):
         self._account = account

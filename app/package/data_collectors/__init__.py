@@ -23,4 +23,10 @@ from .steam_api_utility import (
     MarketListingsPrice,
     MarketListingsItem,
     MarketListingsAsset,
+    MarketMyHistoryManager,
+    MarketMyHistoryAssets,
+    MarketMyHistoryEvents,
+    MarketMyHistoryPurchases,
+    MarketMyHistoryListings,
+    MarketMyHistoryParcedEvent
 )

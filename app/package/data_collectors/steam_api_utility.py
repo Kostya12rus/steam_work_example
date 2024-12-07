@@ -346,14 +346,12 @@ class SteamAPIUtility:
             if not req.ok: return None
             req_json = req.json()
             if not req_json.get('success', False): return None
-            # print()
-            #
-            # listings = MarketListingsManager(req_json)
-            # next_page_start = listings.get_next_page_start()
-            # if next_page_start is not None:
-            #     next_listings = self.__load_mylistings(start=next_page_start, count=count)
-            #     listings.add_next_page(next_listings)
-            # return listings
+            history = MarketMyHistoryManager(req_json)
+            next_page_start = history.get_next_page_start(max_count=fetch_amount)
+            if next_page_start is not None:
+                next_listings = self.__load_market_history(fetch_amount=fetch_amount, start=next_page_start, count=count)
+                history.add_next_page(next_listings)
+            return history
         except:
             time.sleep(5)
         return None
@@ -1043,3 +1041,226 @@ class MarketListingsAsset:
         return f"MarketListing: {self.market_hash_name} (ID: {self.id}, Amount: {self.amount})"
     def __repr__(self):
         return self.__str__()
+
+
+class MarketMyHistoryManager:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.success: bool = bool(data_json.get('success', 0))
+        self.pagesize: int = data_json.get('pagesize', 0)
+        self.total_count: int = data_json.get('total_count', 0)
+        self.start: int = data_json.get('start', 0)
+
+        self.assets: dict[str, MarketMyHistoryAssets] = self.__parce_assets(data_json.get('assets', {}))
+        self.events: list = [MarketMyHistoryEvents(event) for event in data_json.get('events', [])]
+        self.purchases: dict = {key: MarketMyHistoryPurchases(value) for key, value in data_json.get('purchases', {}).items()}
+        self.listings: dict = {key: MarketMyHistoryListings(value) for key, value in data_json.get('listings', {}).items()}
+
+        self.parced_events: list[MarketMyHistoryParcedEvent] = self.__parce_events(data_json.get('events', []))
+    def __parce_assets(self, data_json: dict) -> dict[str, MarketMyHistoryAssets]:
+        if not data_json: data_json = {}
+        assets = {}
+
+        for app_id, app_data in data_json.items():
+            for contextid, context_data in app_data.items():
+                for asset_id, asset_data in context_data.items():
+                    assets[f'{app_id}_{contextid}_{asset_id}'] = MarketMyHistoryAssets(asset_data)
+
+        return assets
+    def __parce_events(self, data_json: list) -> list[MarketMyHistoryParcedEvent]:
+        events = []
+        for event in data_json:
+            event_class = MarketMyHistoryParcedEvent(event)
+            event_class.listing = next((item for item in self.listings.values() if item.listingid == event_class.listingid), None)
+            event_class.purchase = next((item for item in self.purchases.values() if item.purchaseid == event_class.purchaseid), None)
+            if event_class.listing:
+                event_class.asset = self.assets.get(f"{event_class.listing.asset.appid}_{event_class.listing.asset.contextid}_{event_class.listing.asset.id}", None)
+            events.append(event_class)
+        return events
+
+    def get_next_page_start(self, max_count) -> int | None:
+        if not self.success: return None
+        next_page = self.start + self.pagesize
+        if next_page >= self.total_count or next_page >= max_count: return None
+        return next_page
+
+    def add_next_page(self, next_page: MarketMyHistoryManager):
+        if not next_page or not next_page.success: return
+
+        self.assets.update(next_page.assets)
+        self.events.extend(next_page.events)
+        self.purchases.update(next_page.purchases)
+        self.listings.update(next_page.listings)
+
+        self.parced_events.extend(next_page.parced_events)
+
+        self.parced_events.sort(key=lambda x: x.time_event, reverse=True)
+
+        return self
+
+class MarketMyHistoryEvent(Enum):
+    CREATE_LISTING = 1
+    CANCEL_LISTING = 2
+    SELL_LISTING = 3
+    BUY_LISTING = 4
+
+class MarketMyHistoryParcedEvent:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.time_event: int = data_json.get("time_event", 0)
+        self.datetime_event = datetime.datetime.fromtimestamp(self.time_event)
+        self.event_type: int = data_json.get("event_type", 0)
+        self.listingid: str = data_json.get("listingid", "")
+        self.steamid_actor: str = data_json.get("steamid_actor", "")
+        self.purchaseid: str = data_json.get("purchaseid", "")
+
+        self.asset: MarketMyHistoryAssets | None = None
+        self.listing: MarketMyHistoryListings | None = None
+        self.purchase: MarketMyHistoryPurchases | None = None
+    def __str__(self):
+        return f"MarketMyHistoryParcedEvent: {self.datetime_event} (Type: {self.event_type}, ListingID: {self.listingid}, SteamID: {self.steamid_actor}, PurchaseID: {self.purchaseid})"
+    def __repr__(self):
+        return self.__str__()
+    def get_app_steam_store_url(self) -> str:
+        return f'https://store.steampowered.com/app/{self.asset.appid}' if self.asset and self.asset.appid else " "
+    def get_app_icon_url(self) -> str:
+        return self.asset.app_icon if self.asset and self.asset.app_icon else " "
+    def get_buy_amount(self) -> int:
+        if not self.purchase: return 0
+        return int(self.purchase.asset.amount)
+    def get_left_amount(self) -> int:
+        if not self.listing: return 0
+        return int(self.listing.asset.amount)
+    def get_price(self, is_net_price: bool = False) -> float:
+        if not self.purchase: return 0
+        price = 0
+        if self.event_type == MarketMyHistoryEvent.BUY_LISTING.value:
+            price = self.purchase.paid_amount + (0 if is_net_price else self.purchase.paid_fee)
+        if self.event_type == MarketMyHistoryEvent.SELL_LISTING.value:
+            price = self.purchase.received_amount
+        return round(price/100, 2)
+
+    def get_item_color(self):
+        if not self.asset or not self.asset.name_color: return ''
+        clear_color = self.asset.name_color.replace('#', '')
+        return f'#{clear_color}'
+    def get_item_market_url(self) -> str:
+        if not self.asset or not self.asset.market_hash_name: return ''
+        return f'https://steamcommunity.com/market/listings/{self.asset.appid}/{self.asset.market_hash_name}'
+    def get_item_icon_url(self, width: int = 64, height: int = 64) -> str:
+        if not self.asset: return ' '
+        icon_url = self.asset.icon_url if self.asset.icon_url else self.asset.icon_url_large
+        if not icon_url: return ' '
+        return f'https://community.akamai.steamstatic.com/economy/image/{icon_url}/{width}x{height}?allow_animated=1'
+    def get_item_name(self) -> str:
+        if not self.asset: return ''
+        return self.asset.name
+
+    def is_create(self) -> bool:
+        return self.event_type == MarketMyHistoryEvent.CREATE_LISTING.value
+    def is_cancel(self) -> bool:
+        return self.event_type == MarketMyHistoryEvent.CANCEL_LISTING.value
+    def is_buy(self) -> bool:
+        return self.event_type == MarketMyHistoryEvent.BUY_LISTING.value
+    def is_sell(self) -> bool:
+        return self.event_type == MarketMyHistoryEvent.SELL_LISTING.value
+
+# region ------ AUTO GENERATED MarketMyHistoryAssets ------
+class MarketMyHistoryAssets:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.actions: list = data_json.get("actions", [])
+        self.amount: str = data_json.get("amount", "")
+        self.app_icon: str = data_json.get("app_icon", "")
+        self.appid: int = data_json.get("appid", 0)
+        self.background_color: str = data_json.get("background_color", "")
+        self.classid: str = data_json.get("classid", "")
+        self.commodity: int = data_json.get("commodity", 0)
+        self.contextid: str = data_json.get("contextid", "")
+        self.currency: int = data_json.get("currency", 0)
+        self.descriptions: list = data_json.get("descriptions", [])
+        self.icon_url: str = data_json.get("icon_url", "")
+        self.icon_url_large: str = data_json.get("icon_url_large", "")
+        self.id: str = data_json.get("id", "")
+        self.instanceid: str = data_json.get("instanceid", "")
+        self.market_hash_name: str = data_json.get("market_hash_name", "")
+        self.market_marketable_restriction: int = data_json.get("market_marketable_restriction", 0)
+        self.market_name: str = data_json.get("market_name", "")
+        self.market_tradable_restriction: int = data_json.get("market_tradable_restriction", 0)
+        self.marketable: int = data_json.get("marketable", 0)
+        self.name: str = data_json.get("name", "")
+        self.name_color: str = data_json.get("name_color", "")
+        self.original_amount: str = data_json.get("original_amount", "")
+        self.owner: int = data_json.get("owner", 0)
+        self.rollback_new_contextid: str = data_json.get("rollback_new_contextid", "")
+        self.rollback_new_id: str = data_json.get("rollback_new_id", "")
+        self.status: int = data_json.get("status", 0)
+        self.tradable: int = data_json.get("tradable", 0)
+        self.type: str = data_json.get("type", "")
+        self.unowned_contextid: str = data_json.get("unowned_contextid", "")
+        self.unowned_id: str = data_json.get("unowned_id", "")
+# endregion ------ AUTO GENERATED MarketMyHistoryAssets ------
+# region ------ AUTO GENERATED MarketMyHistoryEvents ------
+class MarketMyHistoryEvents:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.date_event: str = data_json.get("date_event", "")
+        self.event_type: int = data_json.get("event_type", 0)
+        self.listingid: str = data_json.get("listingid", "")
+        self.purchaseid: str = data_json.get("purchaseid", "")
+        self.steamid_actor: str = data_json.get("steamid_actor", "")
+        self.time_event: int = data_json.get("time_event", 0)
+        self.time_event_fraction: int = data_json.get("time_event_fraction", 0)
+# endregion ------ AUTO GENERATED MarketMyHistoryEvents ------
+# region ------ AUTO GENERATED MarketMyHistoryPurchases ------
+class MarketMyHistoryPurchases:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.added_tax: int = data_json.get("added_tax", 0)
+        self.asset: MarketMyHistoryAssets = MarketMyHistoryAssets(data_json.get("asset", {}))
+        self.currencyid: str = data_json.get("currencyid", "")
+        self.failed: int = data_json.get("failed", 0)
+        self.funds_returned: int = data_json.get("funds_returned", 0)
+        self.listingid: str = data_json.get("listingid", "")
+        self.needs_rollback: int = data_json.get("needs_rollback", 0)
+        self.paid_amount: int = data_json.get("paid_amount", 0)
+        self.paid_fee: int = data_json.get("paid_fee", 0)
+        self.publisher_fee: int = data_json.get("publisher_fee", 0)
+        self.publisher_fee_app: int = data_json.get("publisher_fee_app", 0)
+        self.publisher_fee_percent: str = data_json.get("publisher_fee_percent", "")
+        self.purchaseid: str = data_json.get("purchaseid", "")
+        self.received_amount: int = data_json.get("received_amount", 0)
+        self.received_currencyid: str = data_json.get("received_currencyid", "")
+        self.steam_fee: int = data_json.get("steam_fee", 0)
+        self.steamid_purchaser: str = data_json.get("steamid_purchaser", "")
+        self.time_sold: int = data_json.get("time_sold", 0)
+# endregion ------ AUTO GENERATED MarketMyHistoryPurchases ------
+# region ------ AUTO GENERATED MarketMyHistoryListings ------
+class MarketMyHistoryListings:
+    def __init__(self, data_json: dict = None):
+        if not data_json: data_json = {}
+        self.data_json = data_json
+
+        self.asset: MarketMyHistoryAssets = MarketMyHistoryAssets(data_json.get("asset", {}))
+        self.cancel_reason: str = data_json.get("cancel_reason", "")
+        self.cancel_reason_short: str = data_json.get("cancel_reason_short", "")
+        self.currencyid: int = data_json.get("currencyid", 0)
+        self.fee: int = data_json.get("fee", 0)
+        self.listingid: str = data_json.get("listingid", "")
+        self.original_price: int = data_json.get("original_price", 0)
+        self.price: int = data_json.get("price", 0)
+        self.publisher_fee: int = data_json.get("publisher_fee", 0)
+        self.publisher_fee_app: int = data_json.get("publisher_fee_app", 0)
+        self.publisher_fee_percent: str = data_json.get("publisher_fee_percent", "")
+        self.steam_fee: int = data_json.get("steam_fee", 0)
+# endregion ------ AUTO GENERATED MarketMyHistoryListings ------
