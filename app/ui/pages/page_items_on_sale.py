@@ -12,7 +12,9 @@ from app.package.data_collectors import (
     MarketListingsPrice,
     MarketListingsItem,
     MarketMyHistoryManager,
-    MarketMyHistoryParcedEvent
+    MarketMyHistoryParcedEvent,
+
+    load_steam_mini_profile_info, SteamMiniProfileInfo
 )
 
 def create_text_widget():
@@ -37,6 +39,7 @@ class HistoryItemContent(ft.Container):
         # endregion
 
         # region Class params
+        self.item = item
         item_name = item.get_item_name()
         item_color = item.get_item_color()
         item_icon_url = item.get_item_icon_url(width=30, height=30)
@@ -121,6 +124,28 @@ class HistoryItemContent(ft.Container):
         self.price_text.max_lines = 1
         self.price_text.text_align = ft.TextAlign.LEFT
 
+        self.user_avatar_image = ft.Image()
+        self.user_avatar_image.width = 30
+        self.user_avatar_image.height = 30
+        self.user_avatar_image.src = ' '
+
+        self.user_name_text = ft.Text()
+        self.user_name_text.size = 15
+        self.user_name_text.width = 100
+        self.user_name_text.value = f'{self.item.steamid_actor}'
+        self.user_name_text.max_lines = 1
+        self.user_name_text.text_align = ft.TextAlign.LEFT
+        self.user_name_text.overflow = ft.TextOverflow.ELLIPSIS
+
+        self.user_container = ft.Container()
+        self.user_container.height = 30
+        self.user_container.padding = ft.padding.all(0)
+        self.user_container.content = ft.Row(controls=[self.user_avatar_image, self.user_name_text])
+        self.user_container.ink = True
+        self.user_container.on_click = lambda e: ...
+        self.user_container.on_hover = self.load_profile
+        self.user_container.url = f'https://steamcommunity.com/profiles/{self.item.steamid_actor}'
+
         self.row = ft.Row()
         self.row.spacing = 2
         self.row.expand = True
@@ -134,6 +159,8 @@ class HistoryItemContent(ft.Container):
             self.name_text,
             self.amount_text,
             self.price_text,
+
+            self.user_container
         ]
 
         self.content = self.row
@@ -149,8 +176,16 @@ class HistoryItemContent(ft.Container):
         #     end=ft.alignment.center_left,
         #     colors=color_gradient,
         # )
+        # threading.Thread(target=self.load_profile).start()
         return self
 
+    def load_profile(self, *args):
+        miniprofile = load_steam_mini_profile_info(self.item.steamid_actor)
+        if not miniprofile: return
+        self.user_name_text.value = miniprofile.name
+        self.user_avatar_image.src = miniprofile.avatar_url
+        self.user_container.url = f'https://steamcommunity.com/profiles/{miniprofile.steam_id.as_64}/'
+        if self.user_container.page: self.user_container.page.update()
 class HistoryItemsDialog(ft.AlertDialog):
     def __init__(self):
         super().__init__()
@@ -288,8 +323,7 @@ class ItemRowContent(ft.Container):
         # endregion
 
     def get_sort_value(self):
-        return self.price_class.get_price_per_unut_net(), self.item.time_created
-
+        return self.app_class.appid, self.price_class.get_price_per_unut_net(), self.item.time_created
 class ItemsOnSalePageContent(ft.Column):
     def __init__(self):
         # region ft.Column params
