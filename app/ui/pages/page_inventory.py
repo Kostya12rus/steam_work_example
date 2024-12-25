@@ -377,6 +377,14 @@ class SellAllItemContent(ft.Container):
         self._price_sell_percent = percent
         if not self._histogram_price_sell: return
         self.set_price(price_sell=self._histogram_price_sell)
+    def set_price_to_auto_buy(self, set_minimun_price: bool = False):
+        if not self._histogram: return
+        self._price_sell_percent = 1
+        highest_buy_order = self._histogram.get_highest_buy_order()
+        if set_minimun_price:
+            if highest_buy_order < self._minimum_price:
+                highest_buy_order = self._minimum_price
+        self.set_price(price_sell=highest_buy_order)
     def set_is_minimum_auto_buy(self, is_minimum_auto_buy: bool = True):
         self._is_minimum_auto_buy = is_minimum_auto_buy if is_minimum_auto_buy is not None else True
         if not self._is_minimum_auto_buy: return
@@ -496,6 +504,13 @@ class SellAllItemsDialog(ft.AlertDialog):
         percent_button_row.expand = True
         percent_button_row.alignment = ft.MainAxisAlignment.CENTER
         percent_button_row.vertical_alignment = ft.CrossAxisAlignment.CENTER
+
+        button = ft.Radio(value=f"-101", label=f'Min Price')
+        button.splash_radius = 0
+        percent_button_row.controls.append(button)
+        button = ft.Radio(value=f"-100", label=f'AutoBuy')
+        button.splash_radius = 0
+        percent_button_row.controls.append(button)
         for percent in [-20, -15, -10, -5, -1, -0.1, 0, 0.1, 1, 5, 10, 15, 20]:
             button = ft.Radio(value=f"{1 + (percent / 100)}", label=f'{percent}%')
             button.splash_radius = 0
@@ -555,7 +570,6 @@ class SellAllItemsDialog(ft.AlertDialog):
 
         # region Main Content
         self.content = ft.Column()
-        self.content.width = 1000
         self.content.expand = True
         self.content.alignment = ft.MainAxisAlignment.START
         self.content.vertical_alignment = ft.CrossAxisAlignment.START
@@ -623,6 +637,11 @@ class SellAllItemsDialog(ft.AlertDialog):
 
     def _on_change_percent_radio_group(self, *args):
         value = parce_value(self._percent_radio_group.value)
+        if value == 100 or value == 101:
+            for item_control in self._items_column.controls:
+                item_control: SellAllItemContent
+                item_control.set_price_to_auto_buy(set_minimun_price=value==101)
+            return
         value = value if value else 1.0
         for item_control in self._items_column.controls:
             item_control: SellAllItemContent
