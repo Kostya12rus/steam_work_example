@@ -383,6 +383,10 @@ class StackerPageContent(ft.Column):
         self._account = account
         self._steam_api_utility.account = account
 
+        self._items_column.controls = []
+        if self._items_column.page: self._items_column.update()
+        self.__is_init_inventory = False
+
     def did_mount(self):
         self._is_work = True
         if not self.__is_init_inventory or self._on_update_is_work:

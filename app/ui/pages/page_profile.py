@@ -12,7 +12,7 @@ class ProfileContent(ft.Column):
         self.expand = True
         self.spacing = 2
 
-        self.__account: Account = None
+        self.__account: Account | None = None
         self.__steam_profile_data = {}
         self.__cs_profile_data = {}
         self.__cs_matchmaking_stats = []

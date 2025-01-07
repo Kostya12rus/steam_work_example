@@ -207,7 +207,7 @@ class CreateSteamSession:
     def create_refresh_token(self, account: Account):
         if not account or not account.refresh_token: return
         if self.already_work: return
-        if account.is_alive_session():
+        if account.is_alive_session(is_callback=False):
             callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_IN, account)
             return
 

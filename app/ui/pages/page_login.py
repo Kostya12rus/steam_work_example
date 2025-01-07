@@ -151,11 +151,11 @@ class AccountsList(ft.Column):
             self.update()
 
     def delete_account(self, account: Account):
-        sql_manager.account_del(account)
+        account.delete()
         self.load_all_accounts()
 
     def load_all_accounts(self, *args):
-        accounts = sql_manager.account_all_get()
+        accounts = Account.load_all()
         self.accounts_column.controls = []
         if accounts:
             for account_name, account_class in accounts.items():

@@ -1,4 +1,4 @@
-const { EAuthSessionGuardType, EAuthTokenPlatformType, LoginSession } = require('steam-session');
+const { EAuthTokenPlatformType, LoginSession } = require('steam-session');
 // node session_qrcode.js
 
 (async () => {

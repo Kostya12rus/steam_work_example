@@ -4,18 +4,21 @@
 
 ### Требуемые модули
 Перед началом работы убедитесь, что установлены следующие модули:  
-- [Python 3.10+](https://www.python.org/downloads/)  
+- [Python 3.10+](https://www.python.org/downloads/) 
+  - Основной язык программы
 - [Git](https://git-scm.com/)  
+  - Требуется для установки и обновления файлов програмы
 - [Node.js](https://nodejs.org/)  
+  - Требуется для аутентификации в Steam разными способами (по `QRCode`, `Login + Password`, `Login + Password + 2FA Code`)
 
 ### Первоначальная установка или обновление
 1. Проверьте, что все обязательные модули установлены. В противном случае будут возникать ошибки.
-2. Скачайте или создайте файл [`update_install.bat`](https://github.com/Kostya12rus/steam_work_example/blob/main/update_install.bat).
+2. Скачайте или создайте файл [update_install.bat](https://github.com/Kostya12rus/steam_work_example/blob/main/update_install.bat).
 3. Запустите скрипт `update_install.bat` и дождитесь завершения выполнения. По окончании появится уведомление с просьбой нажать любую клавишу.
 
 ### Запуск программы
 1. Проверьте, что установлены все обязательные модули.
-2. Скачайте или создайте файл [`start.bat`](https://github.com/Kostya12rus/steam_work_example/blob/main/start.bat).
+2. Скачайте или создайте файл [start.bat](https://github.com/Kostya12rus/steam_work_example/blob/main/start.bat).
 3. Запустите скрипт `start.bat`.
 4. При первом запуске:
     - Будет установлена библиотека `Flet`. Дождитесь завершения установки и появления окна программы.

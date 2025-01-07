@@ -516,6 +516,11 @@ class ItemsOnSalePageContent(ft.Column):
     def on_update_account(self, account: Account = None):
         self._account = account
         self._steam_api_utility.account = account
+
+        self._items_column.controls = []
+        if self._items_column.page: self._items_column.update()
+        self._is_init = False
+
         if not account:
             self._on_update_is_work = True
 

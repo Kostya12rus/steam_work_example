@@ -17,13 +17,13 @@ def make_property(key_name: str, type_value: type = str, default_return=None):
         property: Свойство для класса с методами getter и setter.
     """
 
-    def getter(self):
+    def getter(self: 'Config'):
         """Метод для получения значения из базы данных."""
         value = sql_manager.get_setting(key_name)
         # Если значение существует, возвращаем его, иначе возвращаем значение по умолчанию
         return value if value is not None else default_return
 
-    def setter(self, value):
+    def setter(self: 'Config', value):
         """Метод для записи значения в базу данных."""
         # Если значение соответствует ожидаемому типу, сохраняем его в базу данных
         if isinstance(value, type_value):

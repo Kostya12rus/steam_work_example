@@ -4,8 +4,8 @@ import pickle
 import sqlite3
 import threading
 
+from enum import Enum
 from app.logger import logger
-from app.core import Account, AppDetails
 from .cyber_safe import store_encrypted_data as encrypt, retrieve_encrypted_data as decrypt
 
 tables_structure = {
@@ -13,16 +13,6 @@ tables_structure = {
         '''
             name        TEXT UNIQUE,
             value       TEXT
-        ''',
-    'accounts':
-        '''
-            login       TEXT UNIQUE,
-            client      TEXT
-        ''',
-    'apps':
-        '''
-            appid           INTEGER UNIQUE,
-            app_details     TEXT
         ''',
     'item_nameid':
         '''
@@ -47,109 +37,57 @@ class SqliteDatabaseManager:
                 cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({table_params});")
         except sqlite3.OperationalError:
             pass
+    def create_table(self, table_name: Enum, table_params: dict[Enum, str]) -> None:
+        columns = ', '.join(f"{name_column.value} {type_column}" for name_column, type_column in table_params.items())
+        self.__create_table(table_name.value, columns)
     def __create_all_tables(self) -> None:
         for table_name in tables_structure:
             self.__create_table(table_name, tables_structure[table_name])
 
 
-    def account_save(self, account: 'Account'):
-        if not isinstance(account, Account): return
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    save_data = account.get_save_data()
-                    account_client = self.encrypt_data(save_data)
-                    cursor.execute("INSERT OR REPLACE INTO accounts (login, client) VALUES (?, ?)", (account.account_name, account_client))
-            except Exception:
-                logger.exception(f"Ошибка при обновлении аккаунта '{account.account_name}'")
-    def account_del(self, account: 'Account'):
-        if not isinstance(account, Account): return
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("DELETE FROM accounts WHERE login=?", (account.account_name,))
-            except Exception:
-                logger.exception(f"Ошибка при обновлении аккаунта '{account.account_name}'")
-    def account_get(self, account_name: str):
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT client FROM accounts WHERE login=?", (account_name,))
-                    row = cursor.fetchone()
-                    if row:
-                        value = row[0]
-                        try:
-                            return Account().set_save_data(self.decrypt_data(value))
-                        except:
-                            pass
-                        return value
-                    return None
-            except Exception:
-                logger.exception(f"Ошибка при получении аккаунта '{account_name}'")
-    def account_all_get(self):
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT * FROM accounts")
-                    row = cursor.fetchall()
-                    return {account[0]: Account().set_save_data(self.decrypt_data(account[1])) for account in row}
-            except Exception:
-                logger.exception(f"Ошибка при получении аккаунтов")
-
-
-    def appdetails_save(self, app_details: 'AppDetails'):
-        if not isinstance(app_details, AppDetails): return
-        if not app_details.is_real_app(): return
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    save_data = app_details.get_save_data()
-                    app_details_client = self.encrypt_data(save_data)
-                    cursor.execute("INSERT OR REPLACE INTO apps (appid, app_details) VALUES (?, ?)", (app_details.appid, app_details_client))
-            except Exception:
-                logger.exception(f"Ошибка при обновлении приложения '{app_details.appid}'")
-    def appdetails_del(self, app_details: 'AppDetails'):
-        if not isinstance(app_details, AppDetails): return
-        if not app_details.is_real_app(): return
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("DELETE FROM apps WHERE appid=?", (app_details.appid,))
-            except Exception:
-                logger.exception(f"Ошибка при обновлении приложения '{app_details.appid}'")
-    def appdetails_get(self, appid: int):
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT app_details FROM apps WHERE appid=?", (appid,))
-                    row = cursor.fetchone()
-                    if row:
-                        value = row[0]
-                        try:
-                            return AppDetails(self.decrypt_data(value))
-                        except:
-                            pass
-                        return value
-                    return None
-            except Exception:
-                logger.exception(f"Ошибка при получении приложения '{appid}'")
-    def appdetails_all_get(self):
-        with self.__db_lock:
-            try:
-                with self.__connect() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT * FROM apps")
-                    row = cursor.fetchall()
-                    return [AppDetails(self.decrypt_data(app[1])) for app in row]
-            except Exception:
-                logger.exception(f"Ошибка при получении приложений")
+    def save_data(self, table_name: str, data: dict) -> bool:
+        try:
+            with self.__db_lock, self.__connect() as conn:
+                cursor = conn.cursor()
+                columns = ', '.join(data.keys())
+                placeholders = ', '.join('?' for _ in data)
+                values = tuple(data.values())
+                query = f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})"
+                cursor.execute(query, values)
+                return True
+        except Exception:
+            logger.exception(f"Ошибка при сохранении данных в таблицу '{table_name}'")
+    def delete_data(self, table_name: str, condition: dict) -> bool:
+        try:
+            with self.__db_lock, self.__connect() as conn:
+                cursor = conn.cursor()
+                condition_column, condition_value = next(iter(condition.items()))
+                query = f"DELETE FROM {table_name} WHERE {condition_column}=?"
+                cursor.execute(query, (condition_value,))
+                return True
+        except Exception:
+            logger.exception(f"Ошибка при удалении данных из таблицы '{table_name}'")
+    def get_data(self, table_name: str, condition: dict):
+        try:
+            with self.__db_lock, self.__connect() as conn:
+                cursor = conn.cursor()
+                condition_column, condition_value = next(iter(condition.items()))
+                query = f"SELECT * FROM {table_name} WHERE {condition_column}=?"
+                cursor.execute(query, (condition_value,))
+                row = cursor.fetchone()
+                return row
+        except Exception:
+            logger.exception(f"Ошибка при получении данных из таблицы '{table_name}'")
+    def get_all_data(self, table_name: str):
+        try:
+            with self.__db_lock, self.__connect() as conn:
+                cursor = conn.cursor()
+                query = f"SELECT * FROM {table_name}"
+                cursor.execute(query)
+                rows = cursor.fetchall()
+                return rows
+        except Exception:
+            logger.exception(f"Ошибка при получении всех данных из таблицы '{table_name}'")
 
 
     def item_nameid_save(self, appid: int | str, market_hash_name: str, nameid: int | str):

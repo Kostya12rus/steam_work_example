@@ -1,5 +1,21 @@
 import re, json, datetime, requests, threading
+
+from enum import Enum
+from app.database.sqlite_manager import sql_manager
 from app.callback import callback_manager, EventName
+
+
+class AccountTable(Enum):
+    TABLE_NAME = 'accounts'
+    LOGIN = 'login'
+    CLIENT = 'client'
+
+column_types = {
+    AccountTable.LOGIN:     'TEXT UNIQUE',
+    AccountTable.CLIENT:    'TEXT',
+}
+sql_manager.create_table(AccountTable.TABLE_NAME, column_types)
+
 
 class Account:
     def __init__(self):
@@ -71,6 +87,7 @@ class Account:
             'refresh_token': self.refresh_token,
             'session': self.session
         }
+
     def set_save_data(self, data: dict):
         self.account_name = data.get('account_name', None)
         self.password = data.get('password', None)
@@ -79,3 +96,50 @@ class Account:
         session = data.get('session', None)
         if session: self.session = session
         return self
+
+
+    def save(self):
+        login = self.account_name
+        if not login: return
+        client = sql_manager.encrypt_data(self.get_save_data())
+
+        sql_manager.save_data(
+            table_name=AccountTable.TABLE_NAME.value,
+            data={
+                AccountTable.LOGIN.value: login,
+                AccountTable.CLIENT.value: client
+            }
+        )
+    def delete(self):
+        login = self.account_name
+        if not login: return
+
+        sql_manager.delete_data(
+            table_name=AccountTable.TABLE_NAME.value,
+            condition={
+                AccountTable.LOGIN.value: login
+            }
+        )
+    @classmethod
+    def load(cls, account_name: str) -> 'Account':
+        data = sql_manager.get_data(
+            table_name=AccountTable.TABLE_NAME.value,
+            condition={
+                AccountTable.LOGIN.value: account_name
+            }
+        )
+        if not data: return None
+
+        # login = data[0]
+        try:
+            client = sql_manager.decrypt_data(data[1])
+        except:
+            client = {}
+
+        return cls().set_save_data(client)
+    @classmethod
+    def load_all(cls) -> dict[str, 'Account']:
+        data = sql_manager.get_all_data(
+            table_name=AccountTable.TABLE_NAME.value
+        )
+        return {account[0]: Account().set_save_data(sql_manager.decrypt_data(account[1])) for account in data}

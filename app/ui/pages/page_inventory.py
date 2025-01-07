@@ -640,7 +640,7 @@ class SellAllItemsDialog(ft.AlertDialog):
         if value == 100 or value == 101:
             for item_control in self._items_column.controls:
                 item_control: SellAllItemContent
-                item_control.set_price_to_auto_buy(set_minimun_price=value==101)
+                item_control.set_price_to_auto_buy(set_minimun_price=value == 101)
             return
         value = value if value else 1.0
         for item_control in self._items_column.controls:
@@ -1695,6 +1695,10 @@ class InventoryPageContent(ft.Column):
     def on_update_account(self, account: Account = None):
         self._account = account
         self._steam_api_utility.account = account
+
+        self._items_column.controls = []
+        if self._items_column.page: self._items_column.update()
+        self.__is_init_inventory = False
 
     def did_mount(self):
         if not self.__is_init_inventory:

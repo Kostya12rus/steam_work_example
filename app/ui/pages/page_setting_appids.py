@@ -1,9 +1,8 @@
 import re
 import flet as ft
 
-from app.ui.pages.base import BasePage, Title
 from app.core import AppDetails
-from app.database import sql_manager
+from app.ui.pages.base import BasePage, Title
 from app.callback import callback_manager, EventName
 
 
@@ -122,7 +121,7 @@ class AppIDContent(ft.Container):
         return row
 
     def __on_click_delete_button(self, e):
-        self.app_details.remove()
+        self.app_details.delete()
 
         self.visible = False
         if self.page: self.update()
@@ -185,7 +184,7 @@ class AppIDsPageContent(ft.Column):
 
     def __load_all_apps(self):
         self.apps_id_column.controls = []
-        for app_details in sql_manager.appdetails_all_get():
+        for app_details in AppDetails.load_all():
             self.apps_id_column.controls.append(AppIDContent(app_details))
         if self.page: self.update()
 

@@ -14,6 +14,7 @@ class MainPageContent(ft.Row):
         callback_manager.register(EventName.ON_ACCOUNT_LOGGED_OUT, self.on_callback_logout)
         callback_manager.register(EventName.ON_ACCOUNT_LOGGED_IN, self.on_callback_authenticated)
         callback_manager.register(EventName.ON_ACCOUNT_LOGGED_ERROR, self.on_callback_authenticated_error)
+        callback_manager.register(EventName.ON_ACCOUNT_SESSION_EXPIRED, self.on_callback_session_expired)
 
         callback_manager.register(EventName.ON_QR_CODE_READY, self.on_callback_qr_code_ready)
         callback_manager.register(EventName.ON_QR_CODE_TIMEOUT, self.on_callback_qr_code_timeout)
@@ -69,7 +70,6 @@ class MainPageContent(ft.Row):
 
     def on_press_logout(self, *args):
         callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_OUT)
-
     def set_snack_bar(self, text: str):
         if self.page:
             text_snack_bar = ft.Text(text, expand=True, text_align=ft.TextAlign.CENTER)
@@ -86,6 +86,8 @@ class MainPageContent(ft.Row):
         if set_page: self.set_page(set_page)
         self.logout_button.visible = True
         self.update()
+    def on_callback_session_expired(self, account: Account):
+        self.set_snack_bar(f"Session expired {account.account_name}")
     def on_callback_authenticated_error(self, error: str):
         self.set_snack_bar(f"Error auth {error}")
     def on_callback_qr_code_ready(self, qr_code: str):

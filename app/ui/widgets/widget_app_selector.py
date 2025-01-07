@@ -1,7 +1,6 @@
 import re
 import threading
 import flet as ft
-
 from app.core import AppDetails
 
 class AppIDSelector(ft.FilledTonalButton):
@@ -237,8 +236,7 @@ class AppIDSelector(ft.FilledTonalButton):
         return container
 
     def _update_app_ids(self, is_click: bool=False):
-        from app.database import sql_manager
-        self._app_details_list = sql_manager.appdetails_all_get()
+        self._app_details_list = AppDetails.load_all()
         self._app_controls_map.update({
             str(app_details.appid): self._create_app_control(app_details)
             for app_details in self._app_details_list

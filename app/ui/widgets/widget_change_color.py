@@ -1,14 +1,23 @@
 import flet as ft
 
 COLORS = [
-    {"color": "indigo", "name": "Indigo"},
-    {"color": "blue", "name": "Blue (default)"},
-    {"color": "teal", "name": "Teal"},
-    {"color": "green", "name": "Green"},
-    {"color": "yellow", "name": "Yellow"},
-    {"color": "orange", "name": "Orange"},
-    {"color": "deeporange", "name": "Deep orange"},
-    {"color": "pink", "name": "Pink"},
+    {"color": ft.colors.INDIGO, "name": "Indigo"},
+    {"color": ft.colors.BLUE, "name": "Blue (default)"},
+    {"color": ft.colors.TEAL, "name": "Teal"},
+    {"color": ft.colors.GREEN, "name": "Green"},
+    {"color": ft.colors.YELLOW, "name": "Yellow"},
+    {"color": ft.colors.ORANGE, "name": "Orange"},
+    {"color": ft.colors.DEEP_ORANGE, "name": "Deep orange"},
+    {"color": ft.colors.PINK, "name": "Pink"},
+    {"color": ft.colors.RED, "name": "Red"},
+    {"color": ft.colors.PURPLE, "name": "Purple"},
+    {"color": ft.colors.DEEP_PURPLE, "name": "Deep Purple"},
+    {"color": ft.colors.CYAN, "name": "Cyan"},
+    {"color": ft.colors.LIGHT_GREEN, "name": "Light Green"},
+    {"color": ft.colors.LIME, "name": "Lime"},
+    {"color": ft.colors.BROWN, "name": "Brown"},
+    {"color": ft.colors.GREY, "name": "Grey"},
+    {"color": ft.colors.BLUE_GREY, "name": "Blue Grey"}
 ]
 
 class ColorMenuItem(ft.PopupMenuItem):
