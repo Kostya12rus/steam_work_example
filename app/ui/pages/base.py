@@ -64,7 +64,6 @@ class BasePage(ft.Container):
             if self.page: self.page.update()
     def __login_account(self, account: Account):
         self.account = account
-        account.save()
 
         is_disable = False if self.not_disabled else self.disabled_is_login
         if self.disabled != is_disable:

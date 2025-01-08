@@ -86,6 +86,7 @@ class MainPageContent(ft.Row):
         if set_page: self.set_page(set_page)
         self.logout_button.visible = True
         self.update()
+        account.save()
     def on_callback_session_expired(self, account: Account):
         self.set_snack_bar(f"Session expired {account.account_name}")
     def on_callback_authenticated_error(self, error: str):

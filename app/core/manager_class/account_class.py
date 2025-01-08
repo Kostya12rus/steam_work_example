@@ -142,4 +142,7 @@ class Account:
         data = sql_manager.get_all_data(
             table_name=AccountTable.TABLE_NAME.value
         )
-        return {account[0]: Account().set_save_data(sql_manager.decrypt_data(account[1])) for account in data}
+        try:
+            return {account[0]: Account().set_save_data(sql_manager.decrypt_data(account[1])) for account in data}
+        except:
+            return {}

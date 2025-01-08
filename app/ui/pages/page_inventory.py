@@ -621,19 +621,17 @@ class SellAllItemsDialog(ft.AlertDialog):
             if self._button_start_sell.page: self._button_start_sell.update()
 
     def _on_click_start_sell(self, *args):
-        if self._button_start_sell.disabled: return
-        self._button_start_sell.disabled = True
-        self._button_start_sell.icon_color = ft.colors.RED
-        if self._button_start_sell.page: self._button_start_sell.update()
+        if self.disabled: return
+        self.disabled = True
+        if self.page: self.page.update()
 
         try:
             for item_control in self._items_column.controls:
                 item_control: SellAllItemContent
                 item_control.start_sell(self._steam_api_utility)
         finally:
-            self._button_start_sell.disabled = False
-            self._button_start_sell.icon_color = ft.colors.GREEN
-            if self._button_start_sell.page: self._button_start_sell.update()
+            self.disabled = False
+            if self.page: self.page.update()
 
     def _on_change_percent_radio_group(self, *args):
         value = parce_value(self._percent_radio_group.value)

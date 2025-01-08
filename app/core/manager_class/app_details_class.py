@@ -91,4 +91,7 @@ class AppDetails:
         data = sql_manager.get_all_data(
             table_name=AppsTable.TABLE_NAME.value
         )
-        return [AppDetails(sql_manager.decrypt_data(app[1])) for app in data]
+        try:
+            return [AppDetails(sql_manager.decrypt_data(app[1])) for app in data]
+        except:
+            return []
