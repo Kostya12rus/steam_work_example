@@ -2,10 +2,10 @@ import re, time, datetime
 import flet as ft
 
 from app.core import Account
+from app.logger import logger
 from app.database import config
 from app.ui.widgets import AppIDSelector
 from app.ui.pages import BasePage, Title
-from app.logger import logger
 from app.package.data_collectors import SteamAPIUtility, InventoryManager, InventoryItemRgDescriptions, MarketListenItem, ItemOrdersHistogram
 
 
@@ -1420,7 +1420,6 @@ class InventoryPageContent(ft.Column):
 
         self.sort_item_image = ft.Image(width=30, src=' ')
 
-        # Надо чтобы названия занимали минимум пространства
         self.sort_name_button = ft.FilledTonalButton()
         self.sort_name_button.text = 'Name'
         self.sort_name_button.width = 250

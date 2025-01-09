@@ -604,11 +604,11 @@ class MarketListenItem:
         return self.hash_name != self.asset_description.market_hash_name
     def is_empty(self) -> bool:
         return self.hash_name == ''
-    def is_for_current_game(self, app_id: int) -> bool:
+    def is_for_current_game(self, app_id: int | str) -> bool:
         return str(self.asset_description.appid) == str(app_id)
 
     def get_icon_url(self) -> str:
-        if not self.asset_description.icon_url: return ''
+        if not self.asset_description.icon_url: return ' '
         return f'https://community.akamai.steamstatic.com/economy/image/{self.asset_description.icon_url}/330x192?allow_animated=1'
     def get_market_url(self) -> str:
         if not self.asset_description or not self.asset_description.appid or not self.asset_description.market_hash_name: return ''
