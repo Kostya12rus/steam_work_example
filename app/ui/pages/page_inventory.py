@@ -449,7 +449,9 @@ class SellAllItemContent(ft.Container):
         if self._user_price_get is not None: return round(self._user_price_get, 2)
         return round(self._price_get, 2) if self._price_get else 0
     def get_count_sell(self) -> int:
-        return int(self._count_sell) if self._count_sell else 0
+        count_sell = int(self._count_sell) if self._count_sell else 0
+        if not count_sell or not self.get_price_sell() or not self.get_count_sell(): return 0
+        return count_sell
     def get_all_price_sell(self) -> float:
         return self.get_price_sell() * self.get_count_sell()
     def get_all_price_get(self) -> float:

@@ -619,7 +619,7 @@ class MarketListenItem:
         return f'#{self.asset_description.name_color.replace("#", "")}' if self.asset_description.name_color else ''
 
     def replace_currency_number(self, new_number: str) -> str:
-        return re.sub(r'\d{1,3}(?:\s?\d{3})*(?:[,.]\d+)?', new_number, self.sell_price_text)
+        return re.sub(r'\d(?:\s?\d)*(?:[.,]\d+)?', new_number, self.sell_price_text)
     def format_currency_number(self, new_number: float) -> str:
         return self.replace_currency_number(f"{round(new_number / 100, 2):.2f}")
     def multiply_price_by(self, count: int) -> str:
