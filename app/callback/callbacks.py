@@ -32,14 +32,15 @@ class CallbackManager:
     def register(self, event_name, callback):
         if event_name not in self._callbacks:
             self._callbacks[event_name] = []
-        self._callbacks[event_name].append(callback)
+        if callback not in self._callbacks[event_name]:
+            self._callbacks[event_name].append(callback)
 
     def unregister(self, event_name, callback):
         if event_name in self._callbacks:
-            self._callbacks[event_name].remove(callback)
+            if callback in self._callbacks[event_name]:
+                self._callbacks[event_name].remove(callback)
 
     def trigger(self, event_name, *args, **kwargs):
-        """Вызывает все callback-и для указанного события асинхронно."""
         with self._lock:
             if event_name in self._callbacks:
                 for callback in self._callbacks[event_name]:

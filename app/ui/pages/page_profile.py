@@ -273,7 +273,7 @@ class ProfileContent(ft.Column):
         self.__cs_profile_data = {}
         self.__cs_matchmaking_stats = []
         if self.__account and self.__account.is_alive_session():
-            self.__steam_profile_data = get_steam_profile_info(session=self.__account.session)
+            self.__steam_profile_data = get_steam_profile_info(session=self.__account.session, steam_id=self.__account.steam_id)
             self.__update_widget_profile()
             self.__cs_profile_data = get_cs_profile_data(session=self.__account.session)
             self.__update_widget_profile()

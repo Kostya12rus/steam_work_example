@@ -1,13 +1,1 @@
-aiohttp
-requests
-pycountry
-qrcode[pil]
-cryptography
-
-lxml
-steam
-loguru
-Pillow
-pyinstaller
-flet==0.25.1
-beautifulsoup4
+-r requirements/base.txt

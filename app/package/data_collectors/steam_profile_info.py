@@ -3,11 +3,14 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as ET
 
 
-def get_steam_profile_info(session: requests.Session = None, url_profile='https://steamcommunity.com/my') -> dict:
+def get_steam_profile_info(session: requests.Session = None, url_profile='https://steamcommunity.com/my', steam_id: int | str = None) -> dict:
+    if not url_profile and not steam_id: return {}
+    if steam_id:
+        url_profile = f'https://steamcommunity.com/profiles/{steam_id}'
     if session:
-        req = session.get(url=f'{url_profile}/?xml=1')
+        req = session.get(url=f'{url_profile}/?xml=1', timeout=10)
     else:
-        req = requests.get(url=f'{url_profile}/?xml=1')
+        req = requests.get(url=f'{url_profile}/?xml=1', timeout=10)
     if not req.ok: return {}
 
     content_type = req.headers.get('Content-Type', '')

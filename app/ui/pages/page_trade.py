@@ -769,7 +769,7 @@ class TradePageContent(ft.Column):
 
     def update_self_user(self, account: Account):
         self.__account = account
-        self_user_info = get_steam_profile_info(self.__account.session)
+        self_user_info = get_steam_profile_info(self.__account.session, steam_id=self.__account.steam_id)
         self.self_user_nickname.value = self_user_info.get('steamID', 'Unknown Nickname')
         self.self_user_avatar.foreground_image_url = self_user_info.get('avatarFull', None)
 
@@ -785,8 +785,7 @@ class TradePageContent(ft.Column):
         if self.page: self.trade_items_row.update()
 
     def update_partner_user(self, steam_id: str | int):
-        url_profile = f'https://steamcommunity.com/profiles/{steam_id}'
-        self_user_info = get_steam_profile_info(self.__account.session, url_profile)
+        self_user_info = get_steam_profile_info(self.__account.session, steam_id=steam_id)
         self.partner_user_nickname.value = self_user_info.get('steamID', 'Unknown Nickname')
         self.partner_user_avatar.foreground_image_url = self_user_info.get('avatarFull', None)
         if self.page: self.partner_user_row.update()

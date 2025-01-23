@@ -1,4 +1,6 @@
 import re, time, datetime
+import threading
+
 import flet as ft
 
 from app.core import Account
@@ -249,23 +251,23 @@ class SellAllItemContent(ft.Container):
             count_item_sell -= selling_amount
 
             for select_item in items_list.items:
-                if select_item.amount <= 0: continue
-                status = steam_api_utility.sell_item(select_item, amount=select_item.amount, price=price_get)
+                select_item_amount = select_item.amount
+                if select_item_amount <= 0: continue
+                status = steam_api_utility.sell_item(select_item, amount=select_item_amount, price=price_get)
+
                 logger.info(f"Sell initiated: name='{item.name}', "
-                            f"amount={select_item.amount}, "
+                            f"amount={select_item_amount}, "
                             f"price_sell={self._price_prefix}{price_sell}{self._price_suffix} | шт., "
                             f"net_price={self._price_prefix}{_price_get}{self._price_suffix} | шт., "
                             f"steam_price={price_get} | шт., "
                             f"assetid={select_item.assetid}")
-                if not status or not status.get('success', False): select_item.amount = 0
+                # if not status or not status.get('success', False): select_item.amount = 0
                 logger.info(f"Sell finished: {status=}")
 
-            succell_amount = items_list.get_amount()
-            count_item_sell += selling_amount - succell_amount
-            item.remove_items(items_list)
-            item_content.update_widget()
+                item.remove_item(select_item)
+                self.set_sell_amount(amount=self.get_count_sell() - select_item_amount)
 
-        self.set_sell_amount(amount=count_item_sell)
+            item_content.update_widget()
 
     def __on_change_sell_price(self, *args):
         value = parce_value(self.price_sell_input.value)
@@ -619,6 +621,9 @@ class SellAllItemsDialog(ft.AlertDialog):
                 histogram = self._steam_api_utility.fetch_market_itemordershistogram(appid=appid, market_hash_name=market_hash_name)
                 item_control.init_histogram(histogram)
         finally:
+            self._items_column.controls.sort(key=lambda x: (x.get_price_get(), -x.get_sum_amount()))
+            if self._items_column.page: self._items_column.update()
+
             self._button_start_sell.disabled = False
             if self._button_start_sell.page: self._button_start_sell.update()
 

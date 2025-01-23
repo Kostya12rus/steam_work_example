@@ -520,7 +520,7 @@ class InventoryItemRgDescriptions:
     def get_item_id(self) -> str:
         return f'{self.classid}_{self.instanceid}'
 
-    def get_amount_items(self, amount: int):
+    def get_amount_items(self, amount: int) -> InventoryItemRgDescriptions:
         return_class = InventoryItemRgDescriptions(self.data_json)
         return_class.items = copy.deepcopy(self.items)
         for item in return_class.items:
@@ -533,22 +533,34 @@ class InventoryItemRgDescriptions:
             else:
                 amount -= item.amount
         return return_class
-    def add_items(self, item_class: 'InventoryItemRgDescriptions'):
-        if not item_class: return
-        if item_class.instanceid != self.instanceid or item_class.classid != self.classid: return
-        for item in item_class.items:
+    def add_items(self, inventory_item_class: 'InventoryItemRgDescriptions') -> None:
+        if not inventory_item_class: return
+        if inventory_item_class.instanceid != self.instanceid or inventory_item_class.classid != self.classid: return
+        for item in inventory_item_class.items:
             original_item = next((i for i in self.items if i.assetid == item.assetid), None)
             if not original_item:
                 self.items.append(item)
             else:
                 original_item.amount += item.amount
-    def remove_items(self, item_class: 'InventoryItemRgDescriptions'):
+    def add_item(self, item_class: 'InventoryItem'):
         if not item_class: return
-        if item_class.instanceid != self.instanceid or item_class.classid != self.classid: return
-        for item in item_class.items:
+        original_item = next((i for i in self.items if i.assetid == item_class.assetid), None)
+        if not original_item:
+            self.items.append(item_class)
+        else:
+            original_item.amount += item_class.amount
+    def remove_items(self, inventory_item_class: 'InventoryItemRgDescriptions') -> None:
+        if not inventory_item_class: return
+        if inventory_item_class.instanceid != self.instanceid or inventory_item_class.classid != self.classid: return
+        for item in inventory_item_class.items:
             original_item = next((i for i in self.items if i.assetid == item.assetid), None)
             if not original_item: continue
             original_item.amount -= item.amount
+    def remove_item(self, item_class: 'InventoryItem'):
+        if not item_class: return
+        original_item = next((i for i in self.items if i.assetid == item_class.assetid), None)
+        if not original_item: return
+        original_item.amount -= item_class.amount
     def __repr__(self):
         return f'<classid: {self.classid}, instanceid: {self.instanceid}, market_hash_name: {self.market_hash_name}, amount: {self.get_amount()}>'
     def __str__(self):
