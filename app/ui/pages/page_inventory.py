@@ -89,7 +89,7 @@ class IntervalInventoryUpdate(ft.Dropdown):
         return selected_option.timedelta
 
 class SellAllItemContent(ft.Container):
-    def __init__(self):
+    def __init__(self, parent_page: 'SellAllItemsDialog'):
         # region ft.Container params
         super().__init__()
         self.padding = ft.padding.all(2)
@@ -100,6 +100,7 @@ class SellAllItemContent(ft.Container):
         self._items_content: list['ItemRowContent'] = []
         self._histogram: ItemOrdersHistogram | None = None
         self._on_change_callback: callable = None
+        self._parent_page: 'SellAllItemsDialog' = parent_page
 
         self._price_sell_percent: float = 1.0
         self._is_minimum_auto_buy: bool = True
@@ -281,13 +282,7 @@ class SellAllItemContent(ft.Container):
         value = self.count_item_sell_input.value
         value = int(value) if value else 0
         self.set_sell_amount(amount=value)
-    def __on_change_content(self, *args):
-        if not self._on_change_callback: return
-        if self.page: self.page.run_thread(self._on_change_callback)
 
-    def set_on_change_callback(self, callback: callable = None):
-        if not callback: return
-        self._on_change_callback = callback
     def set_user_price(self, price_sell: float = None, price_get: float = None):
         self._user_price_get = None
         self._user_price_sell = None
@@ -308,7 +303,7 @@ class SellAllItemContent(ft.Container):
             self._user_price_get = price_get
             self.price_sell_input.value = f'{round(self._user_price_sell, 2):.2f}'
             if self.price_sell_input.page: self.price_sell_input.update()
-        self.__on_change_content()
+        self._parent_page._on_change_content()
     def set_sell_amount(self, amount: int = None):
         amount = amount if amount and amount > 0 else 0
         total_amount = self.get_sum_amount()
@@ -318,7 +313,7 @@ class SellAllItemContent(ft.Container):
         self.count_item_sell_input.value = self._count_sell if isinstance(self._count_sell, int) else 0
         self.count_item_sell_input.suffix_text = f" | {total_amount}"
         if self.count_item_sell_input.page: self.count_item_sell_input.update()
-        self.__on_change_content()
+        self._parent_page._on_change_content()
     def set_price(self, price_sell: float = None, price_get: float = None):
         if price_sell is None and price_get is None:
             self._price_get = None
@@ -372,7 +367,7 @@ class SellAllItemContent(ft.Container):
         self.price_sell_input.value = f'{round(price_sell, 2):.2f}'
         if self.price_sell_input.page: self.price_sell_input.update()
 
-        self.__on_change_content()
+        self._parent_page._on_change_content()
 
     def set_percent(self, percent: float = None):
         if not percent: return
@@ -586,6 +581,7 @@ class SellAllItemsDialog(ft.AlertDialog):
     def init(self, steam_api_utility: SteamAPIUtility, items_content: list['ItemRowContent']):
         self._steam_api_utility = steam_api_utility
         self._items_content = items_content
+        self._items_column.controls = []
 
         market_hash_names = set(item.item.market_hash_name for item in items_content if item.item and item.item.is_marketable())
         ready_items = [item for item in items_content if item.item and item.item.is_marketable()]
@@ -593,9 +589,8 @@ class SellAllItemsDialog(ft.AlertDialog):
             items = [item for item in ready_items if item.item.market_hash_name == market_hash_name]
             if not items: continue
 
-            item_control = SellAllItemContent()
+            item_control = SellAllItemContent(parent_page=self)
             item_control.init_items(items)
-            item_control.set_on_change_callback(self._on_change_content)
             self._items_column.controls.append(item_control)
         self._items_column.controls.sort(key=lambda x: x.get_sum_amount(), reverse=True)
 
@@ -621,15 +616,14 @@ class SellAllItemsDialog(ft.AlertDialog):
                 histogram = self._steam_api_utility.fetch_market_itemordershistogram(appid=appid, market_hash_name=market_hash_name)
                 item_control.init_histogram(histogram)
         finally:
-            self._items_column.controls.sort(key=lambda x: (x.get_price_get(), -x.get_sum_amount()))
-            if self._items_column.page: self._items_column.update()
-
             self._button_start_sell.disabled = False
             if self._button_start_sell.page: self._button_start_sell.update()
 
     def _on_click_start_sell(self, *args):
         if self.disabled: return
         self.disabled = True
+
+        self._items_column.controls.sort(key=lambda x: (x.get_price_get(), -x.get_sum_amount()))
         if self.page: self.page.update()
 
         try:
@@ -1573,7 +1567,8 @@ class InventoryPageContent(ft.Column):
             self.botton_row.disabled = len(inventory) <= 0
             if self.botton_row.page: self.botton_row.update()
 
-            app_inventory = self.__items_content.get(str(app_id), {})
+            # app_inventory = self.__items_content.get(str(app_id), {})
+            app_inventory = {}
 
             inventory_kv = {item.get_item_id(): item for item in inventory}
             for item_id, item in inventory_kv.items():
@@ -1588,7 +1583,7 @@ class InventoryPageContent(ft.Column):
                 if market_listing_item:
                     app_inventory[item_id].update_market_listen(market_listing_item)
 
-            self.__items_content[str(app_id)] = app_inventory
+            # self.__items_content[str(app_id)] = app_inventory
             self._items_column.controls = [item_content for item_content in app_inventory.values()]
             self.__sort_items()
             if self._items_column.page: self._items_column.update()
