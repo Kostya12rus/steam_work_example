@@ -1,6 +1,8 @@
 import threading
 from enum import Enum
+
 from app.logger import logger
+
 
 class EventName(Enum):
     ON_ACCOUNT_SESSION_EXPIRED = "on_account_session_expired"
@@ -57,4 +59,6 @@ class CallbackManager:
             callback(*args, **kwargs)
         except Exception as e:
             logger.exception(f"Error in callback {callback}: {e}")
+
+
 callback_manager = CallbackManager(max_workers=5)

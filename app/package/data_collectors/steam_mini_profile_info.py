@@ -5,6 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from steam.steamid import make_steam64, SteamID
 
+
 def get_steam_mini_profile_info(steam_id: int | str, session: requests.Session = None) -> dict:
     return_dict = {}
     steam_id64 = make_steam64(steam_id)
@@ -37,8 +38,11 @@ def get_steam_mini_profile_info(steam_id: int | str, session: requests.Session =
 
     return return_dict
 
+
 steam_list_loaded = {}
 steam_load_lock = threading.Lock()
+
+
 class SteamMiniProfileInfo:
     def __init__(self, data_json: dict = None):
         if not data_json: data_json = {}
@@ -48,6 +52,8 @@ class SteamMiniProfileInfo:
         self.miniprofile_url = self.data_json.get("miniprofile_url", None)
         self.avatar_url = self.data_json.get("avatar_url", ' ')
         self.name = self.data_json.get("name", '')
+
+
 def load_steam_mini_profile_info(steam_id: int | str, session: requests.Session = None) -> SteamMiniProfileInfo | None:
     global steam_list_loaded
 

@@ -1,8 +1,9 @@
 import flet as ft
-from app.ui.pages.base import BasePage, Title
-from app.database import sql_manager
+
 from app.core import Account
 from app.package.steam_session import steam_session_manager
+from app.ui.pages.base import BasePage, Title
+
 
 class Login(ft.Row):
     def __init__(self):
@@ -39,7 +40,6 @@ class Login(ft.Row):
             self.login_button
         ]
 
-
         self.qr_code_title = Title('Login Steam with QR code')
         self.qr_code_button = ft.FilledTonalButton(height=30, width=200)
         self.qr_code_button.text = 'Get QR code'
@@ -56,7 +56,6 @@ class Login(ft.Row):
             self.qr_code_button,
             self.qr_code_image
         ]
-
 
         self.controls = [
             self.column_login_password,
@@ -82,6 +81,7 @@ class Login(ft.Row):
         self.qr_code_image.visible = True if image_str else False
         if self.page:
             self.qr_code_image.update()
+
 
 class AccountsList(ft.Column):
     def __init__(self):
@@ -161,8 +161,10 @@ class AccountsList(ft.Column):
             for account_name, account_class in accounts.items():
                 self.add_account(account_class)
 
+
 class LoginPage(BasePage):
     load_position = 0
+
     def __init__(self):
         super().__init__()
         self.name = 'login'
@@ -183,11 +185,14 @@ class LoginPage(BasePage):
 
     def on_callback_qr_code_ready(self, image_str: str):
         self.login_content.on_callback_qr_code(image_str)
+
     def on_callback_qr_code_timeout(self):
         self.login_content.on_callback_qr_code()
+
     def on_callback_authenticated(self, account: Account):
         self.accounts_content.load_all_accounts()
         self.login_content.on_callback_qr_code()
         self.login_content.on_login_success()
+
     def on_callback_authenticated_error(self, *args):
         self.login_content.on_callback_qr_code()

@@ -1,11 +1,15 @@
-import time, datetime, threading
+import datetime
+import threading
+import time
+
 import flet as ft
 
 from app.core import Account
 from app.logger import logger
-from app.ui.widgets import AppIDSelector
-from app.ui.pages import BasePage, Title
 from app.package.data_collectors import SteamAPIUtility, InventoryManager, InventoryItemRgDescriptions
+from app.ui.pages import BasePage, Title
+from app.ui.widgets import AppIDSelector
+
 
 class ItemRowContent(ft.Container):
     def __init__(self, item: InventoryItemRgDescriptions):
@@ -97,12 +101,16 @@ class ItemRowContent(ft.Container):
 
     def get_amount(self) -> int:
         return self.item.get_amount()
+
     def get_count_items(self) -> int:
         return self.item.get_items_amount()
+
     def is_stackable(self) -> bool:
         return self.item.get_items_amount() > 1
+
     def get_sort_value(self) -> tuple[int, int]:
         return int(self.item.classid), int(self.item.instanceid)
+
 
 class StackerPageContent(ft.Column):
     def __init__(self):
@@ -258,7 +266,7 @@ class StackerPageContent(ft.Column):
 
             is_stackable = any(item.get_items_amount() > 1 for item in inventory)
             self._botton_row.disabled = not is_stackable
-            self._start_stacking_all_button.text = f'Stack {sum(item.get_items_amount()-1 for item in inventory)} items'
+            self._start_stacking_all_button.text = f'Stack {sum(item.get_items_amount() - 1 for item in inventory)} items'
             self._start_stacking_all_button.icon_color = ft.colors.GREEN if is_stackable else ft.colors.RED
             if self._botton_row.page: self._botton_row.update()
 
@@ -287,7 +295,7 @@ class StackerPageContent(ft.Column):
             self._now_item_text.color = item_content.item.get_color()
             self._total_progress.value = start_index / total_count
             self._now_item_progress.value = 0
-            self._time_left_text.value = f"~{(total_count-start_index)*time_wait} sec."
+            self._time_left_text.value = f"~{(total_count - start_index) * time_wait} sec."
             if self._stacking_progress_row.page: self._stacking_progress_row.update()
             if item_content.already_stacked: return
             item_content.already_stacked = True
@@ -301,7 +309,7 @@ class StackerPageContent(ft.Column):
                 if not self._is_work:
                     logger.info(f"Stop Stacking (User close page) '{item_content.item.name}'")
                     return
-                now_index = start_index+num
+                now_index = start_index + num
                 self._now_item_progress.value = num / total_item_count
                 self._total_progress.value = now_index / total_count
                 time_left = (total_count - now_index) * time_wait
@@ -397,8 +405,10 @@ class StackerPageContent(ft.Column):
     def will_unmount(self):
         self._is_work = False
 
+
 class StackerPage(BasePage):
     load_position = 4
+
     def __init__(self):
         super().__init__()
         self.name = 'stacker'
@@ -412,5 +422,6 @@ class StackerPage(BasePage):
 
     def on_callback_authenticated(self, account: Account):
         self.page_content.on_update_account(account)
+
     def on_callback_logout(self):
         self.page_content.on_update_account()

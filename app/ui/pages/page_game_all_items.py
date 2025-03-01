@@ -1,6 +1,7 @@
 import flet as ft
-from app.ui.pages import BasePage, Title
+
 from app.core import Account
+from app.ui.pages import BasePage, Title
 
 
 class GameAllItemsContent(ft.Column):
@@ -22,8 +23,10 @@ class GameAllItemsContent(ft.Column):
             ft.Container(expand=True, content=text_coming_soon, alignment=ft.alignment.center)
         ]
 
+
 class GameAllItemsPage(BasePage):
     load_position = 7
+
     def __init__(self):
         super().__init__()
         self.name = 'game_all_items'
@@ -39,5 +42,6 @@ class GameAllItemsPage(BasePage):
 
     def on_callback_authenticated(self, account: Account):
         ...
+
     def on_callback_logout(self):
         ...

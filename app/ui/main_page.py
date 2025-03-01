@@ -1,10 +1,10 @@
 import flet as ft
 
 from app.callback import callback_manager, EventName
-from app.ui.widgets import ThemeToggleButton, ColorMenuButton
-from app.ui.pages import page_manager, BasePage
-from app.package.steam_session import note_js_utility
 from app.core import Account
+from app.package.steam_session import note_js_utility
+from app.ui.pages import page_manager, BasePage
+from app.ui.widgets import ThemeToggleButton, ColorMenuButton
 
 
 class MainPageContent(ft.Row):
@@ -21,10 +21,8 @@ class MainPageContent(ft.Row):
         callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_DEVICE, self.on_callback_request_confirmation_device)
         callback_manager.register(EventName.ON_REQUEST_CONFIRMATION_EMAIL, self.on_callback_request_confirmation_email)
 
-
         self.expand = True
         self.spacing = 0
-
 
         self._pages = self.get_pages_list()
         self.navigation_widget = ft.Column(expand=True, scroll=ft.ScrollMode.AUTO)
@@ -33,13 +31,11 @@ class MainPageContent(ft.Row):
         self.navigation_widget.horizontal_alignment = ft.CrossAxisAlignment.CENTER
         self.navigation_widget.controls = self._pages
 
-
         self.logout_button = ft.IconButton(visible=False)
         self.logout_button.icon = ft.icons.LOGOUT
         self.logout_button.icon_color = ft.colors.RED
         self.logout_button.tooltip = "Logout"
         self.logout_button.on_click = self.on_press_logout
-
 
         self.design_editor = ft.Row(spacing=0)
         self.design_editor.alignment = ft.MainAxisAlignment.CENTER
@@ -70,16 +66,19 @@ class MainPageContent(ft.Row):
 
     def on_press_logout(self, *args):
         callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_OUT)
+
     def set_snack_bar(self, text: str):
         if self.page:
             text_snack_bar = ft.Text(text, expand=True, text_align=ft.TextAlign.CENTER)
             self.page.open(ft.SnackBar(text_snack_bar))
+
     def on_callback_logout(self):
         self.set_snack_bar("Logout success")
         set_page = next((page for page in self._pages if page.not_disabled or not page.disabled_is_logout), None)
         if set_page: self.set_page(set_page)
         self.logout_button.visible = False
         self.update()
+
     def on_callback_authenticated(self, account: Account):
         self.set_snack_bar(f"Success auth {account.account_name}")
         set_page = next((page for page in self._pages if page.not_disabled or not page.disabled_is_login), None)
@@ -87,16 +86,22 @@ class MainPageContent(ft.Row):
         self.logout_button.visible = True
         self.update()
         account.save()
+
     def on_callback_session_expired(self, account: Account):
         self.set_snack_bar(f"Session expired {account.account_name}")
+
     def on_callback_authenticated_error(self, error: str):
         self.set_snack_bar(f"Error auth {error}")
+
     def on_callback_qr_code_ready(self, qr_code: str):
         self.set_snack_bar("QR code ready")
+
     def on_callback_qr_code_timeout(self):
         self.set_snack_bar("QR code timeout")
+
     def on_callback_request_confirmation_device(self):
         self.set_snack_bar("Request confirmation on device")
+
     def on_callback_request_confirmation_email(self):
         self.set_snack_bar("Request confirmation on email")
 

@@ -1,7 +1,8 @@
 import flet as ft
-from app.database import sql_manager
-from app.core import Account
+
 from app.callback import callback_manager, EventName
+from app.core import Account
+
 
 class Title(ft.Row):
     def __init__(self, title_text: str, size: int = 20, color: ft.colors = ft.colors.BLUE, text_align: ft.TextAlign = ft.TextAlign.CENTER):
@@ -13,8 +14,10 @@ class Title(ft.Row):
         self.container = ft.Container(padding=0, expand=True, content=self.text_widget)
         self.controls = [self.container]
 
+
 class BasePage(ft.Container):
     load_position: int = 99
+
     def __init__(self):
         super().__init__()
 
@@ -45,12 +48,16 @@ class BasePage(ft.Container):
 
     def on_callback_logout(self):
         ...
+
     def on_callback_authenticated(self, account: Account):
         ...
+
     def on_callback_authenticated_error(self, error: str):
         ...
+
     def on_callback_qr_code_ready(self, qr_code: str):
         ...
+
     def on_callback_qr_code_timeout(self):
         ...
 
@@ -62,6 +69,7 @@ class BasePage(ft.Container):
             self.disabled = is_disable
             self._button_widget.color = ft.colors.GREY if is_disable else ft.colors.BLUE
             if self.page: self.page.update()
+
     def __login_account(self, account: Account):
         self.account = account
 
@@ -102,6 +110,7 @@ class BasePage(ft.Container):
 
         self.ink = True
         return self
+
     def set_select_page(self, is_select: bool):
         self._text_widget.weight = ft.FontWeight.BOLD if is_select else ft.FontWeight.NORMAL
         self._button_widget.color = ft.colors.GREEN if is_select else ft.colors.GREY if self.disabled else ft.colors.BLUE
@@ -110,7 +119,9 @@ class BasePage(ft.Container):
 
     def will_unmount(self):
         ...
+
     def did_mount(self):
         ...
+
     def before_update(self) -> None:
         ...

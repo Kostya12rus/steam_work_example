@@ -1,7 +1,8 @@
 import os
-import sys
 import pathlib
 import subprocess
+import sys
+
 
 class NodeJSUtility:
     def __init__(self):

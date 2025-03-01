@@ -1,9 +1,9 @@
 import flet as ft
 
 from app.core import Account
+from app.package.data_collectors import SteamAPIUtility, MarketListenItem
 from app.ui.pages import BasePage, Title
 from app.ui.widgets import AppIDSelector
-from app.package.data_collectors import SteamAPIUtility, MarketListenItem
 
 
 class ItemRowContent(ft.Container):
@@ -69,6 +69,7 @@ class ItemRowContent(ft.Container):
 
         self.content = self.row
         # endregion
+
 
 class MarketPageContent(ft.Column):
     def __init__(self):
@@ -208,9 +209,12 @@ class MarketPageContent(ft.Column):
 
     def __sort_items(self):
         def _get_sort_value(button: ft.FilledTonalButton) -> int:
-            if button.icon == ft.icons.ARROW_DOWNWARD: return 1
-            elif button.icon == ft.icons.ARROW_UPWARD: return -1
-            else: return 0
+            if button.icon == ft.icons.ARROW_DOWNWARD:
+                return 1
+            elif button.icon == ft.icons.ARROW_UPWARD:
+                return -1
+            else:
+                return 0
 
         self.__sort_by_name()
 
@@ -272,8 +276,10 @@ class MarketPageContent(ft.Column):
             self.__is_init = True
             self._on_select_app_id(self.app_id_selector.get_config_value())
 
+
 class MarketPage(BasePage):
     load_position = 6
+
     def __init__(self):
         super().__init__()
         self.name = 'market'
@@ -287,5 +293,6 @@ class MarketPage(BasePage):
 
     def on_callback_authenticated(self, account: Account):
         self.page_content.on_update_account(account)
+
     def on_callback_logout(self):
         self.page_content.on_update_account()

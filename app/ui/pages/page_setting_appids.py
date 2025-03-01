@@ -1,15 +1,17 @@
 import re
+
 import flet as ft
 
+from app.callback import callback_manager, EventName
 from app.core import AppDetails
 from app.ui.pages.base import BasePage, Title
-from app.callback import callback_manager, EventName
 
 
 class AppIDContent(ft.Container):
     """
     Класс для отображения информации о приложении Steam в виде виджета.
     """
+
     def __init__(self, app_details: AppDetails):
         super().__init__()
         self.padding = 0
@@ -126,6 +128,7 @@ class AppIDContent(ft.Container):
         self.visible = False
         if self.page: self.update()
 
+
 class AppIDsPageContent(ft.Column):
     def __init__(self):
         # Class variables
@@ -202,8 +205,10 @@ class AppIDsPageContent(ft.Column):
         if not app_details or not app_details.is_real_app(): return
         app_details.save()
 
+
 class AppIDsPage(BasePage):
     load_position = 99
+
     def __init__(self):
         super().__init__()
         self.name = 'app_ids'

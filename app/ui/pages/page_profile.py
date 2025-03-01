@@ -1,9 +1,10 @@
 import datetime
+
 import flet as ft
-from app.ui.pages.base import BasePage, Title
 
 from app.core import Account
 from app.package.data_collectors import get_steam_profile_info, get_cs_profile_data, get_cs_matchmaking_stats_data
+from app.ui.pages.base import BasePage, Title
 
 
 class ProfileContent(ft.Column):
@@ -17,7 +18,6 @@ class ProfileContent(ft.Column):
         self.__cs_profile_data = {}
         self.__cs_matchmaking_stats = []
 
-
         self.page_title = Title('Account Information')
 
         self.update_info_button = ft.FilledTonalButton(expand=True, height=30)
@@ -26,7 +26,6 @@ class ProfileContent(ft.Column):
         self.update_info_button.on_click = self.update_profile_data
         self.update_info_row = ft.Row()
         self.update_info_row.controls = [self.update_info_button]
-
 
         self.steam_title = Title('Steam Profile Information')
 
@@ -77,7 +76,6 @@ class ProfileContent(ft.Column):
             self.steam_games_title,
             self.steam_games_column,
         ]
-
 
         self.cs_profile_title = Title('CS Profile Information')
 
@@ -134,7 +132,6 @@ class ProfileContent(ft.Column):
             self.cs_matchmaking_stats_title,
             self.cs_matchmaking_stats_table,
         ]
-
 
         self.main_row = ft.Row(expand=True)
         self.main_row.controls = [self.steam_column, ft.VerticalDivider(), self.cs_profile_column]
@@ -287,6 +284,7 @@ class ProfileContent(ft.Column):
 
 class ProfilePage(BasePage):
     load_position = 1
+
     def __init__(self):
         super().__init__()
         self.name = 'profile'

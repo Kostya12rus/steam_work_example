@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup, Tag
 
+
 def get_cs_coplay_data(session: requests.Session) -> list[int | str]:
     if not session: return []
     url = 'https://steamcommunity.com/my/friends/coplay'

@@ -3,10 +3,10 @@ import re
 import flet as ft
 
 from app.core import Account
-from app.ui.widgets import AppIDSelector
-from app.ui.pages import BasePage, Title
 from app.package.data_collectors import get_steam_profile_info, get_steam_id_from_url
 from app.package.data_collectors.steam_api_utility import SteamAPIUtility, InventoryItemRgDescriptions, InventoryManager
+from app.ui.pages import BasePage, Title
+from app.ui.widgets import AppIDSelector
 
 
 class TradeItemsContent(ft.Column):
@@ -845,6 +845,7 @@ class TradePageContent(ft.Column):
 
 class TradePage(BasePage):
     load_position = 2
+
     def __init__(self):
         super().__init__()
         self.name = 'trade'

@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import Mock
 import time
-from app.callback.callbacks import CallbackManager, EventName
+from unittest.mock import Mock
+
+import pytest
 from loguru import logger
+
+from app.callback.callbacks import CallbackManager, EventName
 
 
 @pytest.fixture(autouse=True)

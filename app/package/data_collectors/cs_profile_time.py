@@ -1,10 +1,13 @@
-import re
 import datetime
+import re
+
 import requests
 from bs4 import BeautifulSoup
 
+
 def steam_time_to_timestamp(time_str: str) -> int:
     return int(datetime.datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S GMT').replace(tzinfo=datetime.timezone.utc).timestamp())
+
 
 def get_cs_profile_time(body_content) -> dict[str, int]:
     soup_cs = BeautifulSoup(body_content, 'html.parser')
@@ -48,6 +51,7 @@ def get_cs_profile_time(body_content) -> dict[str, int]:
 
     return time_data
 
+
 def get_cs_profile_level(body_content) -> dict[str, int]:
     try:
         soup = BeautifulSoup(body_content, 'html.parser')
@@ -66,6 +70,7 @@ def get_cs_profile_level(body_content) -> dict[str, int]:
         pass
 
     return {}
+
 
 def get_cs_profile_data(session: requests.Session) -> dict[str, int]:
     req = session.get('https://steamcommunity.com/my/gcpd/730?tab=accountmain')

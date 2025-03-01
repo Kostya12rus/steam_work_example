@@ -20,6 +20,7 @@ COLORS = [
     {"color": ft.colors.BLUE_GREY, "name": "Blue Grey"}
 ]
 
+
 class ColorMenuItem(ft.PopupMenuItem):
     def __init__(self, color, name):
         super().__init__()
@@ -39,6 +40,7 @@ class ColorMenuItem(ft.PopupMenuItem):
     def change_color(self, e):
         self.page.theme = self.page.dark_theme = ft.Theme(color_scheme_seed=self.data)
         self.page.update()
+
 
 class ColorMenuButton(ft.PopupMenuButton):
     def __init__(self):

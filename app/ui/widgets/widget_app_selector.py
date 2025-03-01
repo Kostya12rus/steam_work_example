@@ -1,7 +1,10 @@
 import re
 import threading
+
 import flet as ft
+
 from app.core import AppDetails
+
 
 class AppIDSelector(ft.FilledTonalButton):
     def __init__(
@@ -124,9 +127,11 @@ class AppIDSelector(ft.FilledTonalButton):
 
     def did_mount(self):
         self._update_app_ids(is_click=True)
+
     def _on_button_click(self, e):
         self._update_app_ids(is_click=True)
         self.page.open(self._dialog)
+
     def _on_dialog_close_click(self, e):
         self.page.close(self._dialog)
 
@@ -154,6 +159,7 @@ class AppIDSelector(ft.FilledTonalButton):
         if not parent_hierarchy:
             return None
         return f'{"_".join(parent_hierarchy)}_{self.__class__.__name__}'
+
     def get_config_value(self):
         if not self.use_config: return None
         config_name = self._get_config_name()
@@ -162,6 +168,7 @@ class AppIDSelector(ft.FilledTonalButton):
 
         config.add_property(config_name, type_value=str, default_return="")
         return config.get_property(config_name)
+
     def set_config_value(self, value):
         if not self.use_config: return
         config_name = self._get_config_name()
@@ -178,7 +185,8 @@ class AppIDSelector(ft.FilledTonalButton):
             return str(self._dialog_radio_group.value)
         else:
             return ''
-    def set_select_game(self, *args, app_id: str | int='', is_click: bool=False):
+
+    def set_select_game(self, *args, app_id: str | int = '', is_click: bool = False):
         if not app_id: app_id = ''
         app_id = str(app_id)
 
@@ -235,7 +243,7 @@ class AppIDSelector(ft.FilledTonalButton):
 
         return container
 
-    def _update_app_ids(self, is_click: bool=False):
+    def _update_app_ids(self, is_click: bool = False):
         self._app_details_list = AppDetails.load_all()
         self._app_controls_map.update({
             str(app_details.appid): self._create_app_control(app_details)
@@ -294,6 +302,7 @@ class AppIDSelector(ft.FilledTonalButton):
         self._save_app_id_button.visible = is_current_app_details
         if self._custom_radio_container.page: self._custom_radio_container.update()
         return input_app_id if input_app_id_isnumeric else ''
+
     def _on_click_load_app_id_button(self, e):
         input_app_id = self._on_change_app_ids_input()
         if not input_app_id: return
@@ -302,6 +311,7 @@ class AppIDSelector(ft.FilledTonalButton):
         self._custom_app_logo.src = self._custom_app_details.image
         self._custom_app_name.value = self._custom_app_details.name
         self._on_change_app_ids_input()
+
     def _on_click_save_app_id_button(self, e):
         input_app_id = self._on_change_app_ids_input()
         if not input_app_id: return

@@ -1,8 +1,12 @@
-import re, json, datetime, requests, threading
-
+import datetime
+import json
+import re
+import requests
+import threading
 from enum import Enum
-from app.database.sqlite_manager import sql_manager
+
 from app.callback import callback_manager, EventName
+from app.database.sqlite_manager import sql_manager
 
 
 class AccountTable(Enum):
@@ -10,9 +14,10 @@ class AccountTable(Enum):
     LOGIN = 'login'
     CLIENT = 'client'
 
+
 column_types = {
-    AccountTable.LOGIN:     'TEXT UNIQUE',
-    AccountTable.CLIENT:    'TEXT',
+    AccountTable.LOGIN: 'TEXT UNIQUE',
+    AccountTable.CLIENT: 'TEXT',
 }
 sql_manager.create_table(AccountTable.TABLE_NAME, column_types)
 
@@ -33,6 +38,7 @@ class Account:
         self.__last_check_status = None
         self.__last_check_time = datetime.datetime.min
         self.__lock_check_session = threading.Lock()
+
     def is_alive_session(self, is_callback: bool = True) -> bool:
         with self.__lock_check_session:
             if self.__last_check_status and self.__last_check_time + datetime.timedelta(seconds=30) > datetime.datetime.now():
@@ -44,6 +50,7 @@ class Account:
             if is_callback and not self.__last_check_status: callback_manager.trigger(EventName.ON_ACCOUNT_SESSION_EXPIRED, self)
             print(f'is_alive_session: {self.__last_check_status}')
             return self.__last_check_status
+
     def get_steam_web_token(self):
         with self.__lock:
             if self.__access_token: return self.__access_token
@@ -60,6 +67,7 @@ class Account:
                     return token
             except:
                 return None
+
     def load_wallet_info(self):
         if self.__wallet_info: return self.__wallet_info
         if not self.is_alive_session(): return
@@ -97,7 +105,6 @@ class Account:
         if session: self.session = session
         return self
 
-
     def save(self):
         login = self.account_name
         if not login: return
@@ -110,6 +117,7 @@ class Account:
                 AccountTable.CLIENT.value: client
             }
         )
+
     def delete(self):
         login = self.account_name
         if not login: return
@@ -120,6 +128,7 @@ class Account:
                 AccountTable.LOGIN.value: login
             }
         )
+
     @classmethod
     def load(cls, account_name: str) -> 'Account':
         data = sql_manager.get_data(
@@ -137,6 +146,7 @@ class Account:
             client = {}
 
         return cls().set_save_data(client)
+
     @classmethod
     def load_all(cls) -> dict[str, 'Account']:
         data = sql_manager.get_all_data(

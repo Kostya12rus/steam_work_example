@@ -1,9 +1,11 @@
+import importlib
 import os
 import pathlib
 import sys
-import importlib
 from typing import Type
+
 from . import BasePage
+
 
 class PageManager:
     def __init__(self):
@@ -22,16 +24,20 @@ class PageManager:
         sys.path.append(local_path.absolute().as_posix())
 
         self.pages.extend(self.__load_pages(pathlib.Path(os.path.abspath(__file__)).parent))
+        imported_paths = []
         for sys_path in sys.path:
             if not sys_path: continue
-            user_pages = self.__load_pages(pathlib.Path(sys_path) / "user_pages")
+            path_modules = pathlib.Path(sys_path) / "user_pages"
+            if not path_modules.is_dir(): continue
+            if path_modules in imported_paths: continue
+            imported_paths.append(path_modules)
+            user_pages = self.__load_pages(path_modules)
             if not user_pages: continue
             self.pages.extend(user_pages)
 
     @staticmethod
-    def __load_pages(directory: pathlib.Path=None):
+    def __load_pages(directory: pathlib.Path = None):
         if not directory or not directory.is_dir(): return
-
         if directory not in sys.path:
             sys.path.append(directory.as_posix())
         pages = []
@@ -48,4 +54,6 @@ class PageManager:
                     print(f"Ошибка при импорте {module_name}: {e}")
         pages.sort(key=lambda x: x.load_position)
         return pages
+
+
 page_manager = PageManager()

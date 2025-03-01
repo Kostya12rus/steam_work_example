@@ -1,15 +1,16 @@
-import os
-import io
-import time
 import base64
-import qrcode
+import io
+import os
 import pathlib
-import requests
-import threading
 import subprocess
+import threading
+import time
 
-from app.core.manager_class import Account
+import qrcode
+import requests
+
 from app.callback import callback_manager, EventName
+from app.core.manager_class import Account
 
 
 class CreateSteamSession:
@@ -56,6 +57,7 @@ class CreateSteamSession:
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
 
         return img_base64
+
     def create_qr_code(self, *args):
         if self.already_work: return
         self.already_work = True
@@ -271,5 +273,6 @@ class CreateSteamSession:
             callback_manager.trigger(EventName.ON_ACCOUNT_LOGGED_ERROR, str(e))
         finally:
             self.already_work = False
+
 
 steam_session_manager = CreateSteamSession()

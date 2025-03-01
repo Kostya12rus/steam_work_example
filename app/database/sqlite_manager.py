@@ -1,10 +1,10 @@
 import json
-import zlib
 import pickle
 import sqlite3
 import threading
-
+import zlib
 from enum import Enum
+
 from app.logger import logger
 from .cyber_safe import store_encrypted_data as encrypt, retrieve_encrypted_data as decrypt
 
@@ -21,6 +21,7 @@ tables_structure = {
         ''',
 }
 
+
 class SqliteDatabaseManager:
     def __init__(self):
         self.db_name = 'data.db'
@@ -30,6 +31,7 @@ class SqliteDatabaseManager:
 
     def __connect(self):
         return sqlite3.connect(self.db_name, check_same_thread=False)
+
     def __create_table(self, table_name: str, table_params: str) -> None:
         try:
             with self.__connect() as conn:
@@ -37,13 +39,14 @@ class SqliteDatabaseManager:
                 cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({table_params});")
         except sqlite3.OperationalError:
             pass
+
     def create_table(self, table_name: Enum, table_params: dict[Enum, str]) -> None:
         columns = ', '.join(f"{name_column.value} {type_column}" for name_column, type_column in table_params.items())
         self.__create_table(table_name.value, columns)
+
     def __create_all_tables(self) -> None:
         for table_name in tables_structure:
             self.__create_table(table_name, tables_structure[table_name])
-
 
     def save_data(self, table_name: str, data: dict) -> bool:
         try:
@@ -57,6 +60,7 @@ class SqliteDatabaseManager:
                 return True
         except Exception:
             logger.exception(f"Ошибка при сохранении данных в таблицу '{table_name}'")
+
     def delete_data(self, table_name: str, condition: dict) -> bool:
         try:
             with self.__db_lock, self.__connect() as conn:
@@ -67,6 +71,7 @@ class SqliteDatabaseManager:
                 return True
         except Exception:
             logger.exception(f"Ошибка при удалении данных из таблицы '{table_name}'")
+
     def get_data(self, table_name: str, condition: dict):
         try:
             with self.__db_lock, self.__connect() as conn:
@@ -78,6 +83,7 @@ class SqliteDatabaseManager:
                 return row
         except Exception:
             logger.exception(f"Ошибка при получении данных из таблицы '{table_name}'")
+
     def get_all_data(self, table_name: str):
         try:
             with self.__db_lock, self.__connect() as conn:
@@ -89,7 +95,6 @@ class SqliteDatabaseManager:
         except Exception:
             logger.exception(f"Ошибка при получении всех данных из таблицы '{table_name}'")
 
-
     def item_nameid_save(self, appid: int | str, market_hash_name: str, nameid: int | str):
         if not appid or not market_hash_name or not nameid: return
         with self.__db_lock:
@@ -99,6 +104,7 @@ class SqliteDatabaseManager:
                     cursor.execute("INSERT OR REPLACE INTO item_nameid (market_hash_name, nameid) VALUES (?, ?)", (f'{appid}__{market_hash_name}', nameid))
             except Exception:
                 logger.exception(f"Ошибка при сохранении item_nameid {appid}__{market_hash_name} {nameid}")
+
     def item_nameid_del(self, appid: int | str, market_hash_name: str):
         if not appid or not market_hash_name: return
         with self.__db_lock:
@@ -108,6 +114,7 @@ class SqliteDatabaseManager:
                     cursor.execute("DELETE FROM item_nameid WHERE market_hash_name=?", (f'{appid}__{market_hash_name}',))
             except Exception:
                 logger.exception(f"Ошибка при удалении item_nameid {appid}__{market_hash_name}")
+
     def item_nameid_get(self, appid: int | str, market_hash_name: str):
         if not appid or not market_hash_name: return
         with self.__db_lock:
@@ -121,6 +128,7 @@ class SqliteDatabaseManager:
                     return None
             except Exception:
                 logger.exception(f"Ошибка при получении item_nameid {appid}__{market_hash_name}")
+
     def item_nameid_all_get(self):
         with self.__db_lock:
             try:
@@ -131,7 +139,6 @@ class SqliteDatabaseManager:
             except Exception:
                 logger.exception(f"Ошибка при получении приложений")
 
-
     def save_setting(self, name: str, value: str | list | dict):
         try:
             with self.__db_lock, self.__connect() as conn:
@@ -141,6 +148,7 @@ class SqliteDatabaseManager:
                 cursor.execute("INSERT OR REPLACE INTO setting (name, value) VALUES (?, ?)", (name, value))
         except Exception:
             logger.exception(f"Ошибка при обновлении настройки '{name}'")
+
     def get_setting(self, name: str) -> str | list | None:
         try:
             with self.__db_lock, self.__connect() as conn:
@@ -157,7 +165,6 @@ class SqliteDatabaseManager:
                 return None
         except Exception:
             logger.exception(f"Ошибка при получении настройки '{name}'")
-
 
     def encrypt_data(self, data: any) -> bytes | None:
         """
@@ -185,6 +192,7 @@ class SqliteDatabaseManager:
             # Логирование ошибки при шифровании
             logger.exception(f"Ошибка при шифровании данных: {type(error).__name__}")
             return None
+
     def decrypt_data(self, data: bytes) -> any:
         """
         Дешифрует и разжимает предоставленные данные.
@@ -211,5 +219,6 @@ class SqliteDatabaseManager:
             # Логирование ошибки при дешифровании
             logger.exception(f"Ошибка при дешифровании данных: {type(error).__name__}")
             return None
+
 
 sql_manager = SqliteDatabaseManager()

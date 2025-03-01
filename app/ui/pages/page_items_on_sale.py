@@ -1,9 +1,10 @@
-import time, threading
+import threading
+import time
 
 import flet as ft
-from app.logger import logger
+
 from app.core import Account
-from app.ui.pages import BasePage, Title
+from app.logger import logger
 from app.package.data_collectors import (
     SteamAPIUtility,
     MarketListingsListing,
@@ -13,9 +14,10 @@ from app.package.data_collectors import (
     MarketListingsItem,
     MarketMyHistoryManager,
     MarketMyHistoryParcedEvent,
-
-    load_steam_mini_profile_info, SteamMiniProfileInfo
+    load_steam_mini_profile_info
 )
+from app.ui.pages import BasePage, Title
+
 
 def create_text_widget():
     widget = ft.Text()
@@ -26,8 +28,9 @@ def create_text_widget():
     widget.overflow = ft.TextOverflow.ELLIPSIS
     return widget
 
+
 class HistoryItemContent(ft.Container):
-    def __init__(self, item: MarketMyHistoryParcedEvent, prefix: str='', suffix: str=''):
+    def __init__(self, item: MarketMyHistoryParcedEvent, prefix: str = '', suffix: str = ''):
         # region ft.Container params
         super().__init__()
         self.ink = True
@@ -186,6 +189,8 @@ class HistoryItemContent(ft.Container):
         self.user_avatar_image.src = miniprofile.avatar_url
         self.user_container.url = f'https://steamcommunity.com/profiles/{miniprofile.steam_id.as_64}/'
         if self.user_container.page: self.user_container.page.update()
+
+
 class HistoryItemsDialog(ft.AlertDialog):
     def __init__(self):
         super().__init__()
@@ -229,7 +234,7 @@ class HistoryItemsDialog(ft.AlertDialog):
         ]
         # endregion
 
-    def init(self, items_event: MarketMyHistoryManager, prefix: str='', suffix: str=''):
+    def init(self, items_event: MarketMyHistoryManager, prefix: str = '', suffix: str = ''):
         for event in items_event.parced_events:
             item_control = HistoryItemContent(event, prefix=prefix, suffix=suffix)
             self._items_column.controls.append(item_control)
@@ -324,6 +329,8 @@ class ItemRowContent(ft.Container):
 
     def get_sort_value(self):
         return self.app_class.appid, self.price_class.get_price_per_unut_net(), self.item.time_created
+
+
 class ItemsOnSalePageContent(ft.Column):
     def __init__(self):
         # region ft.Column params
@@ -383,7 +390,7 @@ class ItemsOnSalePageContent(ft.Column):
         self._start_load_price_button.icon = ft.icons.SYNC
         self._start_load_price_button.icon_color = ft.colors.RED
         self._start_load_price_button.expand = True
-        self._start_load_price_button.visible = False #TODO Дописать функционал
+        self._start_load_price_button.visible = False  # TODO Дописать функционал
         self._start_load_price_button.style = button_style
         self._start_load_price_button.on_click = self._on_click_start_load_price_button
 
@@ -537,6 +544,7 @@ class ItemsOnSalePageContent(ft.Column):
 
 class ItemsOnSalePage(BasePage):
     load_position = 5
+
     def __init__(self):
         super().__init__()
         self.name = 'items_on_sale'
@@ -550,5 +558,6 @@ class ItemsOnSalePage(BasePage):
 
     def on_callback_authenticated(self, account: Account):
         self.page_content.on_update_account(account)
+
     def on_callback_logout(self):
         self.page_content.on_update_account()

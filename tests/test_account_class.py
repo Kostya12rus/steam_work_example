@@ -1,8 +1,9 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, PropertyMock
+
+from app.core.manager_class.account_class import Account, AccountTable
 from app.database.sqlite_manager import sql_manager
-from app.callback import callback_manager, EventName
-from app.core.manager_class.account_class import Account,AccountTable
 
 
 @pytest.fixture

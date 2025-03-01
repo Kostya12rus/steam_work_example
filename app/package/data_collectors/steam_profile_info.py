@@ -1,6 +1,7 @@
+import xml.etree.ElementTree as ET
+
 import requests
 from bs4 import BeautifulSoup
-import xml.etree.ElementTree as ET
 
 
 def get_steam_profile_info(session: requests.Session = None, url_profile='https://steamcommunity.com/my', steam_id: int | str = None) -> dict:
@@ -23,6 +24,7 @@ def get_steam_profile_info(session: requests.Session = None, url_profile='https:
     if profile_fatalerror: return {}
 
     root = ET.fromstring(req.text)
+
     def xml_to_dict(element):
         data = {}
         for child in element:

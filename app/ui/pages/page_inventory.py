@@ -1,14 +1,15 @@
-import re, time, datetime
-import threading
+import datetime
+import re
+import time
 
 import flet as ft
 
 from app.core import Account
-from app.logger import logger
 from app.database import config
-from app.ui.widgets import AppIDSelector
-from app.ui.pages import BasePage, Title
+from app.logger import logger
 from app.package.data_collectors import SteamAPIUtility, InventoryManager, InventoryItemRgDescriptions, MarketListenItem, ItemOrdersHistogram
+from app.ui.pages import BasePage, Title
+from app.ui.widgets import AppIDSelector
 
 
 def create_input_widget():
@@ -23,6 +24,8 @@ def create_input_widget():
     input_widget.text_align = ft.TextAlign.RIGHT
     input_widget.text_vertical_align = ft.VerticalAlignment.CENTER
     return input_widget
+
+
 def create_button_widget():
     button = ft.FilledTonalButton()
     button.height = 30
@@ -35,6 +38,8 @@ def create_button_widget():
     button.style.text_style = ft.TextStyle()
     button.style.text_style.size = 14
     return button
+
+
 def parce_value(value: str):
     unified_value = value.replace(',', '.')
     match = re.search(r'\d+(\.\d{0,3})?', unified_value)
@@ -46,22 +51,25 @@ def parce_value(value: str):
     else:
         return ''
 
+
 class IntervalEnum(ft.dropdown.Option):
     def __init__(self, text: str = '1 sec', timedelta: datetime.timedelta = datetime.timedelta(seconds=1)):
         super().__init__()
         self.text = text
         self.key = text
         self.timedelta = timedelta
+
+
 class IntervalInventoryUpdate(ft.Dropdown):
     def __init__(self, on_select_interval: callable = None):
         super().__init__()
         self.options = [
             IntervalEnum(text='Not Update', timedelta=datetime.timedelta(weeks=100)),
-            IntervalEnum(text='30 sec',     timedelta=datetime.timedelta(seconds=30)),
-            IntervalEnum(text='1 min',      timedelta=datetime.timedelta(minutes=1)),
-            IntervalEnum(text='2 min',      timedelta=datetime.timedelta(minutes=2)),
-            IntervalEnum(text='5 min',      timedelta=datetime.timedelta(minutes=5)),
-            IntervalEnum(text='10 min',     timedelta=datetime.timedelta(minutes=10)),
+            IntervalEnum(text='30 sec', timedelta=datetime.timedelta(seconds=30)),
+            IntervalEnum(text='1 min', timedelta=datetime.timedelta(minutes=1)),
+            IntervalEnum(text='2 min', timedelta=datetime.timedelta(minutes=2)),
+            IntervalEnum(text='5 min', timedelta=datetime.timedelta(minutes=5)),
+            IntervalEnum(text='10 min', timedelta=datetime.timedelta(minutes=10)),
         ]
         self.padding = ft.padding.all(2)
         self.alignment = ft.alignment.center
@@ -74,19 +82,23 @@ class IntervalInventoryUpdate(ft.Dropdown):
         self.on_select_interval = on_select_interval
         self.on_change = self.__on_change
         self.__load_from_config()
+
     def __on_change(self, *args):
         if not self.on_select_interval: return
         selected_option: IntervalEnum = next((option for option in self.options if option.key == self.value), None)
         if not selected_option: return
         config.interval_update_inventory = selected_option.key
         self.on_select_interval(selected_option.timedelta)
+
     def __load_from_config(self):
         config_value = config.interval_update_inventory
         selected_option: IntervalEnum = next((option for option in self.options if option.key == config_value), None)
         self.value = config_value if selected_option else 'Not Update'
+
     def get_selected_interval(self) -> datetime.timedelta:
         selected_option: IntervalEnum = next((option for option in self.options if option.key == self.value), None)
         return selected_option.timedelta
+
 
 class SellAllItemContent(ft.Container):
     def __init__(self, parent_page: 'SellAllItemsDialog'):
@@ -274,10 +286,12 @@ class SellAllItemContent(ft.Container):
         value = parce_value(self.price_sell_input.value)
         value = value if value else 0
         self.set_user_price(price_sell=value)
+
     def __on_change_get_price(self, *args):
         value = parce_value(self.price_get_input.value)
         value = value if value else 0
         self.set_user_price(price_get=value)
+
     def __on_change_count(self, *args):
         value = self.count_item_sell_input.value
         value = int(value) if value else 0
@@ -304,6 +318,7 @@ class SellAllItemContent(ft.Container):
             self.price_sell_input.value = f'{round(self._user_price_sell, 2):.2f}'
             if self.price_sell_input.page: self.price_sell_input.update()
         self._parent_page._on_change_content()
+
     def set_sell_amount(self, amount: int = None):
         amount = amount if amount and amount > 0 else 0
         total_amount = self.get_sum_amount()
@@ -314,6 +329,7 @@ class SellAllItemContent(ft.Container):
         self.count_item_sell_input.suffix_text = f" | {total_amount}"
         if self.count_item_sell_input.page: self.count_item_sell_input.update()
         self._parent_page._on_change_content()
+
     def set_price(self, price_sell: float = None, price_get: float = None):
         if price_sell is None and price_get is None:
             self._price_get = None
@@ -374,6 +390,7 @@ class SellAllItemContent(ft.Container):
         self._price_sell_percent = percent
         if not self._histogram_price_sell: return
         self.set_price(price_sell=self._histogram_price_sell)
+
     def set_price_to_auto_buy(self, set_minimun_price: bool = False):
         if not self._histogram: return
         self._price_sell_percent = 1
@@ -382,6 +399,7 @@ class SellAllItemContent(ft.Container):
             if highest_buy_order < self._minimum_price:
                 highest_buy_order = self._minimum_price
         self.set_price(price_sell=highest_buy_order)
+
     def set_is_minimum_auto_buy(self, is_minimum_auto_buy: bool = True):
         self._is_minimum_auto_buy = is_minimum_auto_buy if is_minimum_auto_buy is not None else True
         if not self._is_minimum_auto_buy: return
@@ -389,12 +407,14 @@ class SellAllItemContent(ft.Container):
         price_now = self.get_price_sell()
         if price_now >= self._histogram_price_buy: return
         self.set_price(price_sell=self._histogram_price_buy)
+
     def set_minimum_price(self, minimum_price: float = None):
         self._minimum_price = minimum_price if minimum_price is not None else 0.03
         if self._user_price_get is not None or self._user_price_sell is not None: return
         price_now = self.get_price_sell()
         if price_now >= self._minimum_price: return
         self.set_price(price_sell=self._minimum_price)
+
     def set_price_dont_sell(self, price_dont_sell: float = None):
         self._price_dont_sell = price_dont_sell if price_dont_sell is not None else 0
         price_now = self.get_price_sell()
@@ -418,6 +438,7 @@ class SellAllItemContent(ft.Container):
         if price_sell < 0.03:
             price_sell = 0.03
         return price_sell
+
     @staticmethod
     def _calculate_price_sell(price_sell: float = None):
         """
@@ -436,35 +457,43 @@ class SellAllItemContent(ft.Container):
             price_get = 0.01
         return price_get
 
-
     def get_price_sell(self) -> float:
         if not self._count_sell: return 0
         if self._user_price_sell is not None: return round(self._user_price_sell, 2)
         return round(self._price_sell, 2) if self._price_sell else 0
+
     def get_price_get(self) -> float:
         if not self._count_sell: return 0.0
         if self._user_price_get is not None: return round(self._user_price_get, 2)
         return round(self._price_get, 2) if self._price_get else 0
+
     def get_count_sell(self) -> int:
         count_sell = int(self._count_sell) if self._count_sell else 0
         if not count_sell or not self.get_price_sell() or not self.get_price_get(): return 0
         return count_sell
+
     def get_all_price_sell(self) -> float:
         return self.get_price_sell() * self.get_count_sell()
+
     def get_all_price_get(self) -> float:
         return self.get_price_get() * self.get_count_sell()
 
     def get_prefix_text(self) -> str:
         return self._price_prefix
+
     def get_suffix_text(self) -> str:
         return self._price_suffix
 
     def get_sum_amount(self):
         return sum(item.item.get_amount() for item in self._items_content if item.item and item.item.is_marketable())
+
     def get_appid(self):
         return next((item.item.appid for item in self._items_content if item.item), None)
+
     def get_market_hash_name(self):
         return next((item.item.market_hash_name for item in self._items_content if item.item), None)
+
+
 class SellAllItemsDialog(ft.AlertDialog):
     def __init__(self):
         super().__init__()
@@ -532,7 +561,6 @@ class SellAllItemsDialog(ft.AlertDialog):
         self._minimun_price_dont_sell.suffix_text = f" | шт."
         self._minimun_price_dont_sell.on_change = self._on_change_minimun_price_dont_sell
 
-
         row_sell_settings = ft.Row()
         row_sell_settings.expand = True
         row_sell_settings.alignment = ft.MainAxisAlignment.CENTER
@@ -542,7 +570,6 @@ class SellAllItemsDialog(ft.AlertDialog):
             self._minimun_price,
             self._minimun_price_dont_sell,
         ]
-
 
         self._top_bar = ft.Column()
         self._top_bar.alignment = ft.MainAxisAlignment.START
@@ -645,17 +672,20 @@ class SellAllItemsDialog(ft.AlertDialog):
         for item_control in self._items_column.controls:
             item_control: SellAllItemContent
             item_control.set_percent(percent=value)
+
     def _on_change_minimun_auto_buy(self, *args):
         value = self._is_minimun_auto_buy.value
         for item_control in self._items_column.controls:
             item_control: SellAllItemContent
             item_control.set_is_minimum_auto_buy(is_minimum_auto_buy=value)
+
     def _on_change_minimun_price(self, *args):
         value = parce_value(self._minimun_price.value)
         value = value if value else 0.03
         for item_control in self._items_column.controls:
             item_control: SellAllItemContent
             item_control.set_minimum_price(minimum_price=value)
+
     def _on_change_minimun_price_dont_sell(self, *args):
         value = parce_value(self._minimun_price_dont_sell.value)
         value = value if value else 0.00
@@ -873,6 +903,7 @@ class SellItemDialog(ft.AlertDialog):
         self.title_name_text.color = next(item.item.get_color() for item in self._items_content if item.item)
 
         self.count_item_sell_input.suffix_text = f" | {self.title_count_text.value}"
+
     def update_histogram(self, histogram: ItemOrdersHistogram = None):
         if not histogram or not histogram.is_successful(): return False
         for item in self._items_content: item.update_histogram(histogram)
@@ -907,7 +938,6 @@ class SellItemDialog(ft.AlertDialog):
         self.buy_info_column.controls = [buy_order_summary_content] + buy_order_content
 
         if self.page: self.update()
-
 
     def _on_click_start_sell(self, *args):
         if not self._price_get or not self._count_sell: return False
@@ -953,9 +983,9 @@ class SellItemDialog(ft.AlertDialog):
 
         self._set_sell_count(count=count_item_sell)
 
-
     def did_mount(self):
         self.page.run_thread(self.__thread_update_price)
+
     def __thread_update_price(self):
         appid = next(item.item.appid for item in self._items_content if item.item)
         market_hash_name = next(item.item.market_hash_name for item in self._items_content if item.item)
@@ -970,10 +1000,12 @@ class SellItemDialog(ft.AlertDialog):
                 self.title_update_text.value = f'Update via {second} sec'
                 if self.title_update_text.page: self.title_update_text.page.update()
                 time.sleep(0.3)
+
     def load_histogram(self, appid: int, market_hash_name: str):
         if not appid or not market_hash_name or not self._steam_api_utility: return False
         histogram = self._steam_api_utility.fetch_market_itemordershistogram(appid=appid, market_hash_name=market_hash_name)
         self.update_histogram(histogram)
+
     def _create_order_graph_content(self, order_graph: list[int, int, str], prefix_currency: str, suffix_currency: str) -> ft.Container:
         price, count, text = order_graph
 
@@ -1001,12 +1033,13 @@ class SellItemDialog(ft.AlertDialog):
         item_conrtol.content = item_row
         return item_conrtol
 
-
     def __on_change_count(self, *args):
         self._set_sell_count(int(self.count_item_sell_input.value))
+
     def __on_change_get_price(self, *args):
         price_get_input_new = parce_value(self.price_get_input.value)
         self._set_price_get(price_get_input_new)
+
     def __on_change_sell_price(self, *args):
         price_sell_input_new = parce_value(self.price_sell_input.value)
         self._set_price_sell(price_sell_input_new)
@@ -1015,6 +1048,7 @@ class SellItemDialog(ft.AlertDialog):
         self._set_price_get(price_get, is_update=True)
         self._set_price_sell(price_sell, is_update=True)
         self._set_sell_count(count_sell)
+
     def _set_price_get_percent(self, price_sell_percent: float = None):
         if price_sell_percent is None: return
 
@@ -1025,6 +1059,7 @@ class SellItemDialog(ft.AlertDialog):
         else:
             return
         self._set_price_sell(price_sell_now * price_sell_percent, is_update=True)
+
     def _set_price_get(self, price_get: float = None, is_update: bool = False):
         if price_get is None: return
         min_commission = 0.02
@@ -1044,6 +1079,7 @@ class SellItemDialog(ft.AlertDialog):
         self.price_sell_input.value = f'{round(self._price_sell, 2):.2f}'
         if self.price_sell_input.page: self.price_sell_input.update()
         self._update_total_price()
+
     def _set_price_sell(self, price_sell: float = None, is_update: bool = False):
         if price_sell is None: return
         min_commission = 0.02
@@ -1062,6 +1098,7 @@ class SellItemDialog(ft.AlertDialog):
 
         self.price_get_input.value = f'{round(self._price_get, 2):.2f}'
         self._update_total_price()
+
     def _set_sell_count(self, count: int = None, percent: float = None):
         if count is None and not percent: return
         items_amount = sum([item.item.get_amount() for item in self._items_content if item.item and item.item.marketable])
@@ -1084,6 +1121,7 @@ class SellItemDialog(ft.AlertDialog):
         if self.count_item_sell_input.page: self.count_item_sell_input.update()
 
         self._update_total_price()
+
     def _update_total_price(self):
         price_get = self._price_get if self._price_get else 0
         price_sell = self._price_sell if self._price_sell else 0
@@ -1105,11 +1143,9 @@ class SellItemDialog(ft.AlertDialog):
         self.button_start_sell.disabled = bool(not price_get or not price_sell or not self._count_sell)
         if self.button_start_sell.page: self.button_start_sell.update()
 
-
     def _add_log(self, text):
         self.log_column.controls.append(ft.Text(f"{text}"))
         if self.log_column.page: self.log_column.page.update()
-
 
     @staticmethod
     def __parce_html_text(html_content: str):
@@ -1226,7 +1262,6 @@ class ItemRowContent(ft.Container):
         self.update_item_data(item)
         # endregion
 
-
     def update_item_data(self, item: InventoryItemRgDescriptions = None):
         if not item: return
         self.item = item
@@ -1303,7 +1338,6 @@ class ItemRowContent(ft.Container):
 
         if self.page: self.update()
 
-
     def _update_descriptions(self):
         self.name_text.tooltip = None
         self.item_image.tooltip = None
@@ -1352,7 +1386,6 @@ class ItemRowContent(ft.Container):
             set_visibility("Price is unknown", True, False, False, False, False)
         else:
             set_visibility("Marketable", False, True, True, True, True)
-
 
     def get_market_listen_price(self, is_all: bool = False):
         histogram_price = self.get_histogram_price() * 100
@@ -1621,9 +1654,12 @@ class InventoryPageContent(ft.Column):
 
     def __sort_items(self):
         def _get_sort_value(button: ft.FilledTonalButton) -> int:
-            if button.icon == ft.icons.ARROW_DOWNWARD: return 1
-            elif button.icon == ft.icons.ARROW_UPWARD: return -1
-            else: return 0
+            if button.icon == ft.icons.ARROW_DOWNWARD:
+                return 1
+            elif button.icon == ft.icons.ARROW_UPWARD:
+                return -1
+            else:
+                return 0
 
         sort_name = _get_sort_value(self.sort_name_button)
         sort_amount = _get_sort_value(self.sort_amount_button)
@@ -1646,10 +1682,10 @@ class InventoryPageContent(ft.Column):
         for order, key in reversed(active_criteria):
             self._items_column.controls.sort(key=key, reverse=(order == -1))
 
-
     def __update_button_text(self, button: ft.FilledTonalButton, text: str):
         button.text = text
         if button.page: button.update()
+
     def _on_click_load_individual_price(self, e: ft.ControlEvent):
         try:
             self.bottom_load_individual_price_button.disabled = True
@@ -1669,7 +1705,6 @@ class InventoryPageContent(ft.Column):
             self.bottom_load_individual_price_button.icon = ft.icons.DOWNLOAD
             self.bottom_load_individual_price_button.icon_color = ft.colors.GREEN
             self.__update_button_text(self.bottom_load_individual_price_button, 'Load Individual Prices')
-
 
     def _on_click_sell_all_items(self, *args):
         sell_all_dialog = SellAllItemsDialog()
@@ -1707,6 +1742,7 @@ class InventoryPageContent(ft.Column):
 
 class InventoryPage(BasePage):
     load_position = 3
+
     def __init__(self):
         super().__init__()
         self.name = 'inventory'
@@ -1720,5 +1756,6 @@ class InventoryPage(BasePage):
 
     def on_callback_authenticated(self, account: Account):
         self.page_content.on_update_account(account)
+
     def on_callback_logout(self):
         self.page_content.on_update_account()

@@ -1,5 +1,6 @@
-import requests
 from enum import Enum
+
+import requests
 
 from app.callback import callback_manager, EventName
 from app.database.sqlite_manager import sql_manager
@@ -10,9 +11,10 @@ class AppsTable(Enum):
     APPID = 'appid'
     APP_DETAILS = 'app_details'
 
+
 column_types = {
-    AppsTable.APPID:        'INTEGER UNIQUE',
-    AppsTable.APP_DETAILS:  'TEXT',
+    AppsTable.APPID: 'INTEGER UNIQUE',
+    AppsTable.APP_DETAILS: 'TEXT',
 }
 sql_manager.create_table(AppsTable.TABLE_NAME, column_types)
 
@@ -59,6 +61,7 @@ class AppDetails:
         )
 
         if status: callback_manager.trigger(EventName.ON_APP_ID_ADDED, self)
+
     def delete(self):
         if not self.is_real_app(): return
 
@@ -69,6 +72,7 @@ class AppDetails:
             }
         )
         if status: callback_manager.trigger(EventName.ON_APP_ID_REMOVED, self)
+
     @classmethod
     def load(cls, appid: str | int) -> 'AppDetails':
         data = sql_manager.get_data(
@@ -86,6 +90,7 @@ class AppDetails:
             app_details = {}
 
         return cls(app_details)
+
     @classmethod
     def load_all(cls) -> list['AppDetails']:
         data = sql_manager.get_all_data(

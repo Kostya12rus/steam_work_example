@@ -1,5 +1,6 @@
 import flet as ft
 
+
 class ThemeToggleButton(ft.IconButton):
     def __init__(self):
         super().__init__()
