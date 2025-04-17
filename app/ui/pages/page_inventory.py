@@ -487,6 +487,9 @@ class SellAllItemContent(ft.Container):
     def get_sum_amount(self):
         return sum(item.item.get_amount() for item in self._items_content if item.item and item.item.is_marketable())
 
+    def get_count_items(self):
+        return sum([1 for item in self._items_content if item.item and item.item.is_marketable()])
+
     def get_appid(self):
         return next((item.item.appid for item in self._items_content if item.item), None)
 
@@ -650,7 +653,7 @@ class SellAllItemsDialog(ft.AlertDialog):
         if self.disabled: return
         self.disabled = True
 
-        self._items_column.controls.sort(key=lambda x: (x.get_price_get(), -x.get_sum_amount()))
+        # self._items_column.controls.sort(key=lambda x: (x.get_price_get(), -x.get_sum_amount()))
         if self.page: self.page.update()
 
         try:
@@ -700,12 +703,13 @@ class SellAllItemsDialog(ft.AlertDialog):
         total_count_sell = sum(item.get_count_sell() for item in items_content)
 
         self._button_start_sell.disabled = bool(not total_count_sell)
+        sell_count_items = sum(item.get_count_items() for item in items_content)
 
         prefix = next((item.get_prefix_text() for item in items_content if item.get_prefix_text()), "")
         suffix = next((item.get_suffix_text() for item in items_content if item.get_suffix_text()), "")
 
         price_text = f"{prefix}{total_price_sell}{suffix}({prefix}{total_price_get}{suffix})"
-        self._button_start_sell.text = f"Start Sell {total_count_sell} Items {price_text}"
+        self._button_start_sell.text = f"Start Sell {total_count_sell}({sell_count_items}) Items {price_text}"
 
         self._minimun_price.prefix_text = prefix
         self._minimun_price.suffix_text = f"{suffix} | шт."
@@ -1526,6 +1530,11 @@ class InventoryPageContent(ft.Column):
         style.alignment = ft.alignment.center
         style.icon_size = 20
 
+        self.check_box_load_market = ft.Checkbox()
+        self.check_box_load_market.label = 'Load Market'
+        self.check_box_load_market.value = config.load_market_price
+        self.check_box_load_market.on_change = self._on_check_box_load_market
+
         self.bottom_load_individual_price_button = ft.FilledTonalButton()
         self.bottom_load_individual_price_button.text = 'Load Individual Prices'
         self.bottom_load_individual_price_button.icon = ft.icons.DOWNLOAD
@@ -1548,6 +1557,7 @@ class InventoryPageContent(ft.Column):
         self.botton_row.alignment = ft.MainAxisAlignment.START
         self.botton_row.vertical_alignment = ft.CrossAxisAlignment.CENTER
         self.botton_row.controls = [
+            self.check_box_load_market,
             self.bottom_load_individual_price_button,
             self.bottom_sell_all_items_button,
         ]
@@ -1584,6 +1594,10 @@ class InventoryPageContent(ft.Column):
         # print('InventoryPageContent._on_interval_change', e)
         ...
 
+    @staticmethod
+    def _on_check_box_load_market(e: ft.ControlEvent):
+        config.load_market_price = e.control.value
+
     def _on_select_app_id(self, app_id: str):
         try:
             self.app_id_selector.update_button(disabled=True, icon=ft.icons.UPDATE, icon_color=ft.colors.BLUE, text='Loading...')
@@ -1594,7 +1608,8 @@ class InventoryPageContent(ft.Column):
             self.__last_inventory = self._steam_api_utility.get_inventory_items(appid=app_id)
 
             inventory = self.__last_inventory.inventory if self.__last_inventory else []
-            market_listing = self._steam_api_utility.get_market_listings(appid=app_id)
+
+            market_listing = self._steam_api_utility.get_market_listings(appid=app_id) if self.check_box_load_market.value else []
             market_listing_kv = {str(item.asset_description.classid): item for item in market_listing}
 
             self.botton_row.disabled = len(inventory) <= 0
@@ -1682,15 +1697,21 @@ class InventoryPageContent(ft.Column):
         for order, key in reversed(active_criteria):
             self._items_column.controls.sort(key=key, reverse=(order == -1))
 
-    def __update_button_text(self, button: ft.FilledTonalButton, text: str):
+    @staticmethod
+    def __update_button_text(button: ft.FilledTonalButton, text: str):
         button.text = text
         if button.page: button.update()
 
     def _on_click_load_individual_price(self, e: ft.ControlEvent):
+        style = ft.ButtonStyle()
+        style.padding = ft.padding.all(0)
+        style.alignment = ft.alignment.center_left
+        style.icon_size = 20
         try:
             self.bottom_load_individual_price_button.disabled = True
             self.bottom_load_individual_price_button.icon = ft.icons.HOURGLASS_EMPTY
             self.bottom_load_individual_price_button.icon_color = ft.colors.RED
+            self.bottom_load_individual_price_button.style = style
             self.__update_button_text(self.bottom_load_individual_price_button, 'Loading Individual Prices ...')
             self._account.load_wallet_info()
             total_length = len(self._items_column.controls)
@@ -1701,6 +1722,8 @@ class InventoryPageContent(ft.Column):
                 histogram = self._steam_api_utility.fetch_market_itemordershistogram(appid=item_content.item.appid, market_hash_name=item_content.item.market_hash_name)
                 item_content.update_histogram(histogram)
         finally:
+            style.alignment = ft.alignment.center
+            self.bottom_load_individual_price_button.style = style
             self.bottom_load_individual_price_button.disabled = False
             self.bottom_load_individual_price_button.icon = ft.icons.DOWNLOAD
             self.bottom_load_individual_price_button.icon_color = ft.colors.GREEN

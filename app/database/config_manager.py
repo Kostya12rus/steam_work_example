@@ -37,6 +37,7 @@ def make_property(key_name: str, type_value: type = str, default_return=None):
 
 class Config:
     interval_update_inventory = make_property('interval_update_inventory', str, 'Not Update')
+    load_market_price = make_property('load_market_price', bool, False)
 
     def __init__(self):
         self._properties: Dict[str, property] = {}  # Хранилище свойств
