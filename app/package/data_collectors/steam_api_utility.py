@@ -86,7 +86,7 @@ class SteamAPIUtility:
             return self.__get_partnerinventory_items(steam_id=steam_id, appid=appid, start=start, context_id=context_id)
 
     def __get_myinventory_items(self, steam_id: str | int, appid=3017120, start=0, context_id=2):
-        def_url = f'https://steamcommunity.com/inventory/{steam_id}/{appid}/{context_id}?count=5000'
+        def_url = f'https://steamcommunity.com/inventory/{steam_id}/{appid}/{context_id}?count=2000'
         if start:
             def_url += f'&start_assetid={start}'
         try:
