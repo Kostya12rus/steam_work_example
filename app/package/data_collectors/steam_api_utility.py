@@ -396,7 +396,13 @@ class InventoryManager:
         self.parse_inventory()
 
     def parse_inventory(self):
-        inventory: list = self.descriptions
+        inventory: list = []
+        for des in self.descriptions:
+            classid = des.get('classid', 0)
+            instanceid = des.get('instanceid', 0)
+            if any((des_d.get('classid', 0) == classid and des_d.get('instanceid', 0) == instanceid) for des_d in inventory if des):
+                continue
+            inventory.append(des)
 
         for item in inventory:
             classid = item.get('classid', 0)
